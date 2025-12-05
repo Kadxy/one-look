@@ -8,7 +8,7 @@ import {
     FileText, X, Image as ImageIcon, Video, Music, ArrowRight
 } from "lucide-react";
 import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
-import { TTL_OPTIONS, SecretTypes } from "@/lib/constants";
+import { TTL_OPTIONS, SecretTypes, MAX_FILE_SIZE } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
 
 const LOADING_STEPS = [
@@ -17,8 +17,6 @@ const LOADING_STEPS = [
     { icon: CloudUpload, text: "Storing ciphertext...", duration: 500 },
     { icon: ShieldCheck, text: "Ready.", duration: 300 },
 ];
-
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
 
 export default function CreateForm({ setInresult }: { setInresult: (inResult: boolean) => void }) {
     const [content, setContent] = useState("");
@@ -56,7 +54,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const handleFileProcess = (file: File) => {
         if (file.size > MAX_FILE_SIZE) {
             setIsShaking(true);
-            setCustomPlaceholder("File too large (Max 3MB).");
+            const maxSizeMB = Math.round(MAX_FILE_SIZE / 1024 / 1024);
+            setCustomPlaceholder(`File too large (Max ${maxSizeMB}MB).`);
             setTimeout(() => {
                 setIsShaking(false);
                 setCustomPlaceholder("What's the secret?");
@@ -320,7 +319,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
                                             className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
-                                            title="Attach File (Max 3MB)"
+                                            title={`Attach File (Max ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB)`}
                                         >
                                             <Upload className="w-4.5 h-4.5" />
                                         </button>

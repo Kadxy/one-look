@@ -10,3 +10,12 @@ export enum SecretTypes {
     TEXT = "text",
     FILE = "file"
 }
+
+// Maximum file upload size in bytes
+// Can be configured via NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB environment variable (in MB)
+// Default: 3MB
+export const MAX_FILE_SIZE = (() => {
+    const envValue = process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB;
+    const sizeInMB = envValue ? parseFloat(envValue) : 3;
+    return Math.max(1, sizeInMB) * 1024 * 1024;
+})();

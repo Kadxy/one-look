@@ -7,7 +7,7 @@
   </p>
 
   <p align="center">
-    <a href="https://one-look-delta.vercel.app">View Demo</a>
+    <a href="https://one-look.kadxy.com">View Demo</a>
     ·
     <a href="https://github.com/Kadxy/one-look/issues">Report Bug</a>
     ·
@@ -34,11 +34,11 @@ Once a secret is retrieved, it is **atomically deleted** from the database. One 
 
 🔥 **Burn on Read**: Secrets are atomically destroyed (Redis `GETDEL`) upon retrieval.
 
-📁 **File Support**: Securely share text or files (up to 3MB) encrypted in-flight.
+📁 **File Support**: Securely share text or files (default up to 3MB, configurable) encrypted in-flight.
 
 ⏱️ **Auto-Expiry**: Configurable TTL (Time To Live) ensures secrets don't rot in the vault.
 
-⚡ **Lightning Fast**: Built on Next.js 15 (App Router) and Redis.
+⚡ **Lightning Fast**: Built on Next.js 16 (App Router) and Redis.
 
 ## Deploy Your Own
 
@@ -51,6 +51,7 @@ You can deploy your own instance of One-Look in seconds. You only need a Redis i
 | Variable | Description | Required |
 | :--- | :--- | :--- |
 | `REDIS_URL` | Connection string for your Redis instance (e.g., `redis://:password@host:port`) | **Yes** |
+| `NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB` | Maximum upload file size in MB (default: `3`) | No |
 
 ## Development
 
