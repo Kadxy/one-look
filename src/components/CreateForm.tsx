@@ -1,26 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generateKey, encryptData } from "@/lib/crypto";
-import { Copy, Check, Link2, Clock, ChevronDown, AlertCircle, Upload, Sparkles, LockKeyhole, CloudUpload, Key, ShieldCheck, Copyright } from "lucide-react";
+import { Copy, Check, Link2, Clock, ChevronDown, Upload, Lock, CloudUpload, Key, ShieldCheck, Copyright } from "lucide-react";
 import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
-import { TTL_OPTIONS } from "@/lib/constants";
+import { TTL_OPTIONS, SecretTypes } from "@/lib/constants";
+import { VaultRequestPayload } from "@/app/api/vault/route";
 
 const LOADING_STEPS = [
-    { icon: Key, text: "Generating a random key...", duration: 400 },
-    { icon: LockKeyhole, text: "Encrypting your secret...", duration: 400 },
-    { icon: CloudUpload, text: "Uploading to vault...", duration: 400 },
-    { icon: ShieldCheck, text: "Done!", duration: 300 },
+    { icon: Key, text: "Generating a random key...", duration: 420 },
+    { icon: Lock, text: "Encrypting your secret...", duration: 420 },
+    { icon: CloudUpload, text: "Uploading to vault...", duration: 420 },
+    { icon: ShieldCheck, text: "Done!", duration: 240 },
 ];
 
-export default function CreateForm() {
+export default function CreateForm({ setInresult }: { setInresult: (inResult: boolean) => void }) {
     const [content, setContent] = useState("");
+    const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
 
     const [isTtlOpen, setIsTtlOpen] = useState(false);
 
     const [ttl, setTtl] = useState(TTL_OPTIONS.at(-1)?.value || 24 * 60 * 60);
     const [linkNum, setLinkNum] = useState(1);
-    const [isDrmEnabled, setIsDrmEnabled] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
     const [loadingStep, setLoadingStep] = useState(0);
@@ -30,6 +31,10 @@ export default function CreateForm() {
 
     const [resultLinks, setResultLinks] = useState<string[]>([]);
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+    useEffect(() => {
+        setInresult(resultLinks.length > 0)
+    }, [resultLinks])
 
     const handleCreate = async () => {
         if (!content.trim()) {
@@ -49,19 +54,22 @@ export default function CreateForm() {
             const apiPromise = (async () => {
                 const promises = Array.from({ length: linkNum }).map(async () => {
                     const key = await generateKey();
-                    const encrypted = await encryptData(JSON.stringify({ text: content, drm: isDrmEnabled }), key);
+                    const encrypted = await encryptData(content, key);
                     return { encrypted, key };
                 });
                 const encryptedData = await Promise.all(promises);
 
                 const uploadPromises = encryptedData.map(async ({ encrypted, key }) => {
-                    const res = await fetch("/api/burn", {
+                    const { iv, data } = encrypted
+
+                    const res = await fetch("/api/vault", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ encryptedContent: encrypted, ttl: ttl }),
+                        body: JSON.stringify({ iv, secretType, data, ttl } as VaultRequestPayload),
                     });
 
                     if (!res.ok) throw new Error("Failed to create link.");
+
                     const { id } = await res.json();
 
                     return getShareLink(id, key);
@@ -114,13 +122,11 @@ export default function CreateForm() {
     return (
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
             {resultLinks.length > 0 ? (
-                /* --- 结果页 UI --- */
                 <>
                     <div className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
-                        {/* Header */}
                         <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium tracking-wide">
-                                <Sparkles className="w-3.5 h-3.5" />
+                                <ShieldCheck className="w-3.5 h-3.5" />
                                 <span>Links Generated</span>
                             </div>
                             <div className="text-xs text-zinc-500 font-mono">
@@ -128,7 +134,6 @@ export default function CreateForm() {
                             </div>
                         </div>
 
-                        {/* Links List */}
                         <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
                             {resultLinks.map((link, idx) => (
                                 <div key={idx} className="relative group">
@@ -149,18 +154,20 @@ export default function CreateForm() {
                                             className={cn(
                                                 "flex-shrink-0 p-2 rounded-md transition-all cursor-pointer",
                                                 copiedIndex === idx
-                                                    ? "bg-white text-black"
+                                                    ? "bg-zinc-800 text-white"
                                                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
                                             )}
                                         >
-                                            {copiedIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                            {copiedIndex === idx
+                                                ? <Check className="w-3.5 h-3.5" />
+                                                : <Copy className="w-3.5 h-3.5" />
+                                            }
                                         </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Footer Actions */}
                         {resultLinks.length > 1 && (
                             <div className="px-4 pb-4 pt-3">
                                 <button
@@ -184,7 +191,6 @@ export default function CreateForm() {
                         )}
                     </div>
 
-                    {/* Create New Button - Outside Card */}
                     <button
                         onClick={() => { setResultLinks([]); setCopiedIndex(null); }}
                         className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-500"
@@ -193,9 +199,7 @@ export default function CreateForm() {
                     </button>
                 </>
             ) : (
-                /* --- 输入页 UI --- */
                 <div className="space-y-6">
-                    {/* Main Input */}
                     <div className="relative group">
                         <div className="absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
                         <div className="relative">
@@ -215,13 +219,15 @@ export default function CreateForm() {
                                 )}
                                 spellCheck={false}
                             />
-                            <button
-                                type="button"
-                                className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
-                                title="Upload file"
-                            >
-                                <Upload className="w-4.5 h-4.5" />
-                            </button>
+                            {!content && (
+                                <button
+                                    type="button"
+                                    className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
+                                    title="Upload file"
+                                >
+                                    <Upload className="w-4.5 h-4.5" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -237,7 +243,8 @@ export default function CreateForm() {
                                 <button
                                     type="button"
                                     onClick={() => setIsTtlOpen(!isTtlOpen)}
-                                    className="w-full h-8.5 flex items-center justify-between px-3 bg-black border border-zinc-800 rounded-lg text-xs text-zinc-300 hover:border-zinc-600 transition-colors cursor-pointer"
+                                    className={cn("w-full h-8.5 flex items-center justify-between px-3 bg-black border border-zinc-800 rounded-lg text-xs text-zinc-300 hover:border-zinc-600 transition-colors cursor-pointer", isLoading && "opacity-50 cursor-not-allowed")}
+                                    disabled={isLoading}
                                 >
                                     <span>{TTL_OPTIONS.find((t) => t.value === ttl)?.label}</span>
                                     <ChevronDown className={cn("w-3 h-3 transition-transform", isTtlOpen && "rotate-180")} />
@@ -265,39 +272,6 @@ export default function CreateForm() {
                             </div>
                         </div>
 
-                        {/* DRM Toggle */}
-                        <div className="space-y-2">
-                            <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-1">
-                                <Copyright className="w-3 h-3" />
-                                <span>DRM</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsDrmEnabled(!isDrmEnabled)}
-                                disabled={isLoading}
-                                className={cn(
-                                    "h-8.5 flex items-center justify-between px-3 rounded-lg border transition-all cursor-pointer w-24",
-                                    isDrmEnabled
-                                        ? "bg-zinc-900/50 border-zinc-700"
-                                        : "bg-black border-zinc-800 hover:border-zinc-700",
-                                    isLoading && "opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                <span className={cn("text-xs font-medium transition-colors", isDrmEnabled ? "text-white" : "text-zinc-500")}>
-                                    {isDrmEnabled ? "ON" : "OFF"}
-                                </span>
-                                <div className={cn(
-                                    "w-8 h-5 rounded-full relative transition-colors",
-                                    isDrmEnabled ? "bg-white" : "bg-zinc-800"
-                                )}>
-                                    <div className={cn(
-                                        "absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform bg-black",
-                                        isDrmEnabled ? "translate-x-3" : "translate-x-0"
-                                    )} />
-                                </div>
-                            </button>
-                        </div>
-
 
                         {/* Quantity Selector */}
                         <div className="space-y-2">
@@ -306,7 +280,7 @@ export default function CreateForm() {
                                 <span>Links</span>
                             </div>
                             <div className="flex bg-black p-1 rounded-lg border border-zinc-800 w-fit h-8.5">
-                                {[1, 2, 3].map((num) => (
+                                {[1, 2, 3, 4, 5].map((num) => (
                                     <button
                                         key={num}
                                         onClick={() => setLinkNum(num)}
@@ -314,8 +288,10 @@ export default function CreateForm() {
                                             "w-8 h-full flex items-center justify-center rounded-md text-xs font-medium transition-all cursor-pointer",
                                             linkNum === num
                                                 ? "bg-zinc-800 text-white shadow-sm"
-                                                : "text-zinc-600 hover:text-zinc-400"
+                                                : "text-zinc-600 hover:text-zinc-400",
+                                            isLoading && "opacity-50 cursor-not-allowed"
                                         )}
+                                        disabled={isLoading}
                                     >
                                         {num}
                                     </button>

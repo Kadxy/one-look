@@ -1,6 +1,11 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+export const getRedisKey = (key: string) => {
+    const _PREFIX = "onelook"
+    return [_PREFIX, key].join(":");
+}
+
 /**
  * Merges class names
  */

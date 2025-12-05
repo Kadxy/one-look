@@ -1,20 +1,25 @@
+"use client"
+
 import CreateForm from "@/components/CreateForm";
 import { GithubIcon } from "@/components/icons/GithubIcon";
+import { useState } from "react";
 
 export default function Home() {
+  const [inResult, setInresult] = useState(false);
+
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-6 overflow-hidden bg-black text-zinc-200">
 
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
 
       <div className="z-10 w-full max-w-lg flex flex-col items-center space-y-12">
+
         <div className="text-center space-y-3 select-none">
           <p className="text-3xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 tracking-wide">
-            Share Secrets Securely
+            {inResult ? "Your Secrets Secured" : "Share Secrets Securely"}
           </p>
           <h1 className="text-3xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150 tracking-wide">
-            Burn After&nbsp;
+            {inResult ? "Link for" : "Burn After"}&nbsp;
             <span className="inline-block align-baseline font-black text-5xl md:text-6xl tracking-tight pb-1 cursor-default underline-slide text-gradient">
               One Look
             </span>
@@ -22,7 +27,7 @@ export default function Home() {
         </div>
 
         <div className="w-full animate-in fade-in zoom-in-95 duration-700 delay-200">
-          <CreateForm />
+          <CreateForm setInresult={setInresult} />
         </div>
       </div>
 

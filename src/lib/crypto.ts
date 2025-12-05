@@ -1,4 +1,4 @@
-// 1. 生成随机密钥 (AES-256)
+// 1. Generate random key (AES-256)
 export async function generateKey(): Promise<string> {
     const key = await window.crypto.subtle.generateKey(
         { name: "AES-GCM", length: 256 },
@@ -9,12 +9,10 @@ export async function generateKey(): Promise<string> {
     return arrayBufferToBase64(exported);
 }
 
-// 2. 加密数据
-// content: 明文 (JSON string)
-// keyStr: Base64 格式的密钥
+// 2. Encrypt data
 export async function encryptData(content: string, keyStr: string) {
     const key = await importKey(keyStr);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // GCM 标准 IV 长度
+    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // GCM standard IV length
     const encodedContent = new TextEncoder().encode(content);
 
     const encryptedContent = await window.crypto.subtle.encrypt(
@@ -29,7 +27,7 @@ export async function encryptData(content: string, keyStr: string) {
     };
 }
 
-// 3. 解密数据
+// 3. Decrypt data
 export async function decryptData(encryptedData: string, ivStr: string, keyStr: string) {
     try {
         const key = await importKey(keyStr);
@@ -44,11 +42,9 @@ export async function decryptData(encryptedData: string, ivStr: string, keyStr: 
         return new TextDecoder().decode(decrypted);
     } catch (e) {
         console.error("Decryption failed", e);
-        throw new Error("Decryption failed"); // 可能是密钥错，也可能是数据坏了
+        throw new Error("Decryption failed: invalid key or data corrupted");
     }
 }
-
-// --- 内部工具函数 ---
 
 async function importKey(base64Key: string): Promise<CryptoKey> {
     const keyBuffer = base64ToArrayBuffer(base64Key);
@@ -61,7 +57,6 @@ async function importKey(base64Key: string): Promise<CryptoKey> {
     );
 }
 
-// ArrayBuffer 转 Base64 (URL Safe)
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
     let binary = '';
     const bytes = new Uint8Array(buffer);
@@ -69,18 +64,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     for (let i = 0; i < len; i++) {
         binary += String.fromCharCode(bytes[i]);
     }
-    // 替换成 URL 安全字符，并去掉末尾的 =
+    // Replace with URL-safe characters and remove trailing =
     return window.btoa(binary)
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
 }
 
-// Base64 转 ArrayBuffer
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-    // 还原 URL 安全字符
     let safeBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-    // 补全 padding
     while (safeBase64.length % 4) {
         safeBase64 += '=';
     }
