@@ -2,7 +2,10 @@
 
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, HatGlasses, LockOpen, FileText } from "lucide-react";
+import {
+    Loader2, EyeOff, Copy, Download, Check,
+    HatGlasses, LockOpen, FileText, Image as ImageIcon, Video, Music
+} from "lucide-react";
 import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
@@ -10,7 +13,7 @@ import { SecretTypes } from "@/lib/constants";
 interface DecryptedFile {
     fileName: string;
     fileType: string;
-    fileData: string; // Base64 Data URL
+    fileData: string;
 }
 
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,12 +26,9 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     const [secretFile, setSecretFile] = useState<DecryptedFile | null>(null);
 
     const [isCopied, setIsCopied] = useState(false);
-
     const [inputKey, setInputKey] = useState("");
     const [urlKey, setUrlKey] = useState("");
-
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
-
     const [isHashChecked, setIsHashChecked] = useState(false);
 
     useEffect(() => {
@@ -40,16 +40,21 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
         }
     }, []);
 
-    const handleBurn = async () => {
-        if (!isHashChecked) {
-            return;
-        }
+    // 动态图标
+    const getFileIcon = (mimeType: string) => {
+        if (mimeType.startsWith('image/')) return ImageIcon;
+        if (mimeType.startsWith('video/')) return Video;
+        if (mimeType.startsWith('audio/')) return Music;
+        return FileText;
+    };
 
+    const handleBurn = async () => {
+        if (!isHashChecked) return;
         const key = urlKey || inputKey;
 
         if (!key) {
             setStatus("error");
-            setErrorMsg("Decryption key missing.");
+            setErrorMsg("Key missing. Did you lose the link?");
             return;
         }
 
@@ -63,12 +68,12 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
             });
 
             if (res.status === 404) {
-                throw new Error("Secret not found or already destroyed");
+                throw new Error("Poof! This secret has vanished.");
             }
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || "Server error occurred");
+                throw new Error(errorData.error || "Server hiccup.");
             }
 
             const response = await res.json() as BurnResponse;
@@ -88,7 +93,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 setStatus("success");
             } catch (decryptionError) {
                 console.error("Decryption failed:", decryptionError);
-                throw new Error("Decryption failed, key incorrect or data corrupted");
+                throw new Error("Decryption failed. Bad key?");
             }
 
         } catch (err: any) {
@@ -114,11 +119,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
     return (
         <main className="relative flex min-h-screen flex-col items-center justify-center p-6 bg-black text-zinc-200 transition-colors duration-300">
-
-            {/* Top Bar */}
             <div className="absolute top-6 left-6 font-bold text-xl tracking-tighter opacity-50">One-Look</div>
-
-            {/* Grid BG */}
             <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
 
             <div className="w-full max-w-lg z-10">
@@ -130,12 +131,12 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold mb-6">
-                                Reveal Secret
+                                Reveal the Truth
                             </h2>
                             <p className="text-zinc-500">
-                                You can ONLY access once.
+                                One look is all you get.
                                 <br />
-                                Once decrypted, the secret will be destroyed.
+                                This message will self-destruct after reading.
                             </p>
                         </div>
 
@@ -144,7 +145,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 <input
                                     value={inputKey}
                                     onChange={(e) => setInputKey(e.target.value)}
-                                    placeholder="Enter decryption key"
+                                    placeholder="Paste the magic key here..."
                                     className="w-full p-4 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all"
                                 />
                             </div>
@@ -156,9 +157,9 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             disabled={status === 'loading' || (!urlKey && !inputKey.trim())}
                         >
                             {status === 'loading' ? (
-                                <><Loader2 className="animate-spin w-5 h-5" /> <span>Decrypting...</span></>
+                                <><Loader2 className="animate-spin w-5 h-5" /> <span>Unlocking...</span></>
                             ) : (
-                                "Decrypt & Burn"
+                                "Burn & Reveal"
                             )}
                         </button>
                     </div>
@@ -170,16 +171,14 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2 text-white">
                                     <LockOpen className="w-6 h-6" />
-                                    <span className="font-bold text-lg">Secret Decrypted</span>
+                                    <span className="font-bold text-lg">Decrypted</span>
                                 </div>
                             </div>
 
                             {secretType === SecretTypes.TEXT && (
                                 <>
                                     <div className="relative">
-                                        <pre
-                                            className={`w-full h-64 p-4 bg-zinc-950 rounded-xl border border-zinc-900 text-white font-mono text-sm whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar`}
-                                        >
+                                        <pre className={`w-full h-64 p-4 bg-zinc-950 rounded-xl border border-zinc-900 text-white font-mono text-sm whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar`}>
                                             {secretContent}
                                         </pre>
                                     </div>
@@ -191,11 +190,10 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                             {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                             <span>{isCopied ? "Copied" : "Copy"}</span>
                                         </button>
-
                                         <button
                                             onClick={downloadContent}
                                             className="px-4 py-3 bg-zinc-900 text-zinc-400 font-medium rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
-                                            title="Download as .txt"
+                                            title="Save to disk"
                                         >
                                             <Download className="w-5 h-5" />
                                         </button>
@@ -207,7 +205,11 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 <>
                                     <div className="w-full h-64 bg-zinc-950 rounded-xl border border-zinc-900 flex flex-col items-center justify-center gap-4 text-center p-6">
                                         <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center">
-                                            <FileText className="w-8 h-8 text-zinc-400" />
+                                            {/* 动态图标渲染 */}
+                                            {(() => {
+                                                const Icon = getFileIcon(secretFile.fileType);
+                                                return <Icon className="w-8 h-8 text-zinc-400" />;
+                                            })()}
                                         </div>
                                         <div className="space-y-1 overflow-hidden w-full">
                                             <p className="text-zinc-200 font-medium truncate px-4" title={secretFile.fileName}>
@@ -237,7 +239,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             <EyeOff className="w-10 h-10" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Access Failed</h2>
+                            <h2 className="text-2xl font-bold text-white mb-2">Nothing here</h2>
                             <p className="text-zinc-500 font-medium px-4">
                                 {errorMsg}
                             </p>
@@ -248,7 +250,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 href="/"
                                 className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-colors block"
                             >
-                                Back to Home
+                                Start a new one
                             </a>
                         </div>
                     </div>

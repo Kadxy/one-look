@@ -1,28 +1,31 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { generateKey, encryptData } from "@/lib/crypto";
-import { Copy, Check, Link2, Clock, ChevronDown, Upload, Lock, CloudUpload, Key, ShieldCheck, FileText, X } from "lucide-react";
+import {
+    Copy, Check, Link2, Clock, ChevronDown, Upload,
+    Lock, CloudUpload, Key, ShieldCheck,
+    FileText, X, Image as ImageIcon, Video, Music, Ghost
+} from "lucide-react";
 import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
 
+// 更有趣的加载文案
 const LOADING_STEPS = [
-    { icon: Key, text: "Generating a random key...", duration: 420 },
-    { icon: Lock, text: "Encrypting your secret...", duration: 420 },
-    { icon: CloudUpload, text: "Uploading to vault...", duration: 420 },
-    { icon: ShieldCheck, text: "Done!", duration: 240 },
+    { icon: Key, text: "Forging the key...", duration: 500 },
+    { icon: Lock, text: "Scrambling the bits...", duration: 500 },
+    { icon: CloudUpload, text: "Tossing into the void...", duration: 500 },
+    { icon: ShieldCheck, text: "Secret sealed.", duration: 300 },
 ];
 
-// 3MB limit to be safe with serverless function payload limits (usually 4.5MB)
-const MAX_FILE_SIZE = 3 * 1024 * 1024;
+const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
 
 export default function CreateForm({ setInresult }: { setInresult: (inResult: boolean) => void }) {
     const [content, setContent] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
 
-    // File handling state
-    const [selectedFile, setSelectedFile] = useState<{ name: string, size: number } | null>(null);
+    const [selectedFile, setSelectedFile] = useState<{ name: string, size: number, type: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isTtlOpen, setIsTtlOpen] = useState(false);
@@ -32,8 +35,11 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const [isLoading, setIsLoading] = useState(false);
     const [loadingStep, setLoadingStep] = useState(0);
 
-    const [error, setError] = useState(false);
     const [isShaking, setIsShaking] = useState(false);
+    const [customPlaceholder, setCustomPlaceholder] = useState("Whisper your secret here...");
+
+    // 拖拽状态
+    const [isDragging, setIsDragging] = useState(false);
 
     const [resultLinks, setResultLinks] = useState<string[]>([]);
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -42,13 +48,24 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setInresult(resultLinks.length > 0)
     }, [resultLinks])
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // 获取对应的 Icon
+    const getFileIcon = (mimeType: string) => {
+        if (mimeType.startsWith('image/')) return ImageIcon;
+        if (mimeType.startsWith('video/')) return Video;
+        if (mimeType.startsWith('audio/')) return Music;
+        return FileText;
+    };
 
+    const handleFileProcess = (file: File) => {
         if (file.size > MAX_FILE_SIZE) {
-            alert(`File is too large. Max size is 3MB.`);
-            // Reset input
+            // 优雅的错误反馈：抖动 + 占位符提示
+            setIsShaking(true);
+            setCustomPlaceholder("⚠️ Too heavy! Max 3MB allowed.");
+            setTimeout(() => {
+                setIsShaking(false);
+                setCustomPlaceholder("Whisper your secret here...");
+            }, 2000);
+
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
@@ -56,7 +73,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         const reader = new FileReader();
         reader.onload = (ev) => {
             const base64 = ev.target?.result as string;
-            // Pack metadata and content into a JSON string
             const packedContent = JSON.stringify({
                 fileName: file.name,
                 fileType: file.type,
@@ -65,11 +81,36 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
             setContent(packedContent);
             setSecretType(SecretTypes.FILE);
-            setSelectedFile({ name: file.name, size: file.size });
-            if (error) setError(false);
+            setSelectedFile({ name: file.name, size: file.size, type: file.type });
         };
         reader.readAsDataURL(file);
+    }
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleFileProcess(file);
     };
+
+    // 拖拽处理
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleFileProcess(file);
+    }, []);
 
     const clearFile = () => {
         setContent("");
@@ -80,7 +121,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
     const handleCreate = async () => {
         if (!content.trim()) {
-            setError(true);
             setIsShaking(true);
             setTimeout(() => setIsShaking(false), 500);
             return;
@@ -92,11 +132,9 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         try {
-            // Start encryption and uploading in background
             const apiPromise = (async () => {
                 const promises = Array.from({ length: linkNum }).map(async () => {
                     const key = await generateKey();
-                    // content is already a string (either text or JSON string of file)
                     const encrypted = await encryptData(content, key);
                     return { encrypted, key };
                 });
@@ -104,48 +142,37 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
                 const uploadPromises = encryptedData.map(async ({ encrypted, key }) => {
                     const { iv, data } = encrypted
-
                     const res = await fetch("/api/vault", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ iv, secretType, data, ttl } as VaultRequestPayload),
                     });
-
                     if (!res.ok) throw new Error("Failed to create link.");
-
                     const { id } = await res.json();
-
                     return getShareLink(id, key);
                 });
                 return await Promise.all(uploadPromises);
             })();
 
-            // Step 1: Generating key
             await sleep(LOADING_STEPS[0].duration);
-
-            // Step 2: Encrypting
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
-
-            // Step 3: Uploading
             setLoadingStep(2);
             const uploadStart = Date.now();
             const results = await apiPromise;
             const uploadElapsed = Date.now() - uploadStart;
             await sleep(Math.max(0, LOADING_STEPS[2].duration - uploadElapsed));
-
-            // Step 4: All set!
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
 
             setResultLinks(results);
-            // Don't clear content immediately if user wants to create more with same settings? 
-            // Current UX clears it, so we keep it consistent.
             clearFile();
             setContent("");
         } catch (err) {
             console.error(err);
-            alert("Error creating link. Network issue or file too large.");
+            setCustomPlaceholder("Something went wrong. Try again?");
+            setIsShaking(true);
+            setTimeout(() => setIsShaking(false), 1000);
         } finally {
             setIsLoading(false);
             setLoadingStep(0);
@@ -167,7 +194,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
     return (
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
-            {/* Hidden File Input */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -180,11 +206,11 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                     <div className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
                         <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium tracking-wide">
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                                <span>Links Generated</span>
+                                <Ghost className="w-3.5 h-3.5" />
+                                <span>Secrets Secured</span>
                             </div>
                             <div className="text-xs text-zinc-500 font-mono">
-                                Expires in {TTL_OPTIONS.find(t => t.value === ttl)?.label}
+                                Vanishes in {TTL_OPTIONS.find(t => t.value === ttl)?.label}
                             </div>
                         </div>
 
@@ -192,7 +218,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                             {resultLinks.map((link, idx) => (
                                 <div key={idx} className="relative group">
                                     {resultLinks.length > 1 && (
-                                        <div className="text-[10px] text-zinc-600 mb-1 font-mono uppercase tracking-wider">Link {idx + 1}</div>
+                                        <div className="text-[10px] text-zinc-600 mb-1 font-mono uppercase tracking-wider">Target {idx + 1}</div>
                                     )}
                                     <div className="flex items-center gap-3 px-3 py-2 bg-zinc-900/40 hover:bg-zinc-900/60 rounded-lg transition-all border border-zinc-800/50">
                                         <div className="flex-1 min-w-0">
@@ -212,10 +238,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
                                             )}
                                         >
-                                            {copiedIndex === idx
-                                                ? <Check className="w-3.5 h-3.5" />
-                                                : <Copy className="w-3.5 h-3.5" />
-                                            }
+                                            {copiedIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                         </button>
                                     </div>
                                 </div>
@@ -235,9 +258,9 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                 >
                                     <span className="inline-flex items-center gap-2 w-[5.5rem] justify-center">
                                         {copiedIndex === 999 ? (
-                                            <><Check className="w-4 h-4" /><span>Copied</span></>
+                                            <><Check className="w-4 h-4" /><span>Got 'em</span></>
                                         ) : (
-                                            <><Copy className="w-4 h-4" /><span>Copy All</span></>
+                                            <><Copy className="w-4 h-4" /><span>Grab All</span></>
                                         )}
                                     </span>
                                 </button>
@@ -249,61 +272,81 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         onClick={() => { setResultLinks([]); setCopiedIndex(null); }}
                         className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-500"
                     >
-                        Make Another
+                        Encrypt another one
                     </button>
                 </>
             ) : (
                 <div className="space-y-6">
-                    <div className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                    <div
+                        className="relative group"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <div className={cn(
+                            "absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 transition duration-500",
+                            isDragging ? "opacity-60 bg-zinc-700" : "group-hover:opacity-40"
+                        )}></div>
+
                         <div className="relative">
                             {secretType === SecretTypes.FILE && selectedFile ? (
                                 // File Preview Mode
                                 <div className={cn(
                                     "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all",
-                                    error ? "border-zinc-600" : "border-zinc-800"
+                                    "border-zinc-800"
                                 )}>
                                     <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                        <FileText className="w-6 h-6 text-zinc-400" />
+                                        {/* 动态图标渲染 */}
+                                        {(() => {
+                                            const Icon = getFileIcon(selectedFile.type);
+                                            return <Icon className="w-6 h-6 text-zinc-400" />;
+                                        })()}
                                     </div>
                                     <div className="text-center">
                                         <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
                                         <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
                                     </div>
+
+                                    {/* 优雅的关闭按钮 */}
                                     <button
                                         onClick={clearFile}
-                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-red-400 hover:bg-zinc-900 rounded-full transition-colors"
+                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
                                 </div>
                             ) : (
-                                // Text Input Mode
+                                // Text Input Mode with Drag Overlay
                                 <>
                                     <textarea
                                         value={content}
-                                        onChange={(e) => {
-                                            setContent(e.target.value);
-                                            if (error) setError(false);
-                                        }}
-                                        placeholder="Shh! Enter something or upload a file..."
+                                        onChange={(e) => setContent(e.target.value)}
+                                        placeholder={customPlaceholder}
                                         className={cn(
                                             "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
-                                            error
-                                                ? "border-zinc-600 focus:border-zinc-500 focus:ring-zinc-700/20"
-                                                : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
-                                            isShaking && "animate-shake"
+                                            isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
+                                            isShaking && "animate-shake border-zinc-600 placeholder:text-red-400/80"
                                         )}
                                         spellCheck={false}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
-                                        title="Upload file (Max 3MB)"
-                                    >
-                                        <Upload className="w-4.5 h-4.5" />
-                                    </button>
+
+                                    {/* Drag Overlay Text */}
+                                    {isDragging && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <p className="text-zinc-400 font-medium">Drop it like it's hot 🔥</p>
+                                        </div>
+                                    )}
+
+                                    {!content && !isDragging && (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
+                                            title="Attach File (Max 3MB)"
+                                        >
+                                            <Upload className="w-4.5 h-4.5" />
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -311,11 +354,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
                     {/* Configuration Bar */}
                     <div className="flex gap-4">
-                        {/* TTL Selector (Dropdown) */}
                         <div className="space-y-2 w-24">
                             <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-1">
                                 <Clock className="w-3 h-3" />
-                                <span>Expires</span>
+                                <span>Time</span>
                             </div>
                             <div className="relative">
                                 <button
@@ -333,10 +375,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                         {TTL_OPTIONS.map((opt) => (
                                             <button
                                                 key={opt.value}
-                                                onClick={() => {
-                                                    setTtl(opt.value);
-                                                    setIsTtlOpen(false);
-                                                }}
+                                                onClick={() => { setTtl(opt.value); setIsTtlOpen(false); }}
                                                 className={cn(
                                                     "w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer hover:bg-zinc-800",
                                                     ttl === opt.value ? "text-white bg-zinc-800/50 font-medium" : "text-zinc-400"
@@ -350,12 +389,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                             </div>
                         </div>
 
-
-                        {/* Quantity Selector */}
                         <div className="space-y-2">
                             <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-1">
                                 <Link2 className="w-3 h-3" />
-                                <span>Links</span>
+                                <span>Copies</span>
                             </div>
                             <div className="flex bg-black p-1 rounded-lg border border-zinc-800 w-fit h-8.5">
                                 {[1, 2, 3, 4, 5].map((num) => (
@@ -378,7 +415,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         </div>
                     </div>
 
-                    {/* Action Button */}
                     <button
                         onClick={handleCreate}
                         disabled={isLoading}
@@ -396,7 +432,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                             </div>
                         ) : (
                             <span>
-                                {`Create Secret Link${linkNum > 1 ? "s" : ""}`}
+                                {`Seal the Secret`}
                             </span>
                         )}
                     </button>
