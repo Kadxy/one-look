@@ -57,7 +57,7 @@ You can deploy your own instance of One-Look in seconds. You only need a Redis i
 
 1. **Clone the repository**
    ```bash
-   git clone [https://github.com/Kadxy/one-look.git](https://github.com/Kadxy/one-look.git)
+   git clone https://github.com/Kadxy/one-look.git
    cd one-look
    ```
 
@@ -68,10 +68,9 @@ You can deploy your own instance of One-Look in seconds. You only need a Redis i
     ```
 
 3.  **Set up environment**
-    Create a `.env` file in the root directory:
 
     ```bash
-    REDIS_URL="redis://default:password@localhost:6379"
+    cp .env.example .env
     ```
 
 4.  **Run development server**
