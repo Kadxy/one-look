@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+@layer base {
+
+    html,
+    body {
+        background-color: #000000;
+        color: #e4e4e7;
+        /* zinc-200 */
+    }
+
+    ::selection {
+        background-color: #ffffff;
+        color: #000000;
+    }
+}
+
+/* Custom Scrollbar for Geek interaction */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    /* zinc-800 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+    /* zinc-700 */
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
