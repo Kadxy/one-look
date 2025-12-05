@@ -37,12 +37,12 @@ export default function Home() {
 
         <div className="text-center space-y-6 select-none">
           <div className="space-y-2">
-            <p className="text-3xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 tracking-wide">
+            <p className="text-2xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 tracking-wide">
               {inResult ? "Your Secrets Secured" : "Share Secrets Securely"}
             </p>
-            <h1 className="text-3xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150 tracking-wide">
+            <h1 className="text-2xl md:text-4xl font-medium text-zinc-500 animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-150 tracking-wide">
               {inResult ? "Link for" : "Burn After"}&nbsp;
-              <span className="inline-block align-baseline font-black text-5xl md:text-6xl tracking-tight pb-1 cursor-default underline-slide text-gradient">
+              <span className="inline-block align-baseline font-black text-4xl md:text-6xl tracking-tight pb-1 cursor-default underline-slide text-gradient">
                 One Look
               </span>
             </h1>
