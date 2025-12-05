@@ -2,8 +2,8 @@
 
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldAlert } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, SquareAsterisk } from "lucide-react";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
 import { Logo } from "@/components/icons/Logo";
@@ -65,7 +65,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
             });
 
             if (res.status === 404) {
-                throw new Error("Secret has been destroyed or never existed.");
+                throw new Error("Secret vanished.");
             }
 
             if (!res.ok) {
@@ -117,9 +117,9 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     return (
         <main className="relative flex min-h-screen flex-col items-center justify-center p-6 bg-black text-zinc-200 transition-colors duration-300">
             {/* Logo */}
-            <div className="absolute top-8 left-8 z-20 flex items-center gap-3 select-none opacity-50 hover:opacity-100 transition-opacity">
-                <Logo className="w-6 h-6 text-white" />
-                <a href="/" className="font-bold text-lg tracking-tighter">One-Look</a>
+            <div className="absolute top-8 left-8 z-20 flex items-center gap-3 select-none opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.location.href = '/'}>
+                <Logo className="w-6 h-6 text-zinc-100" />
+                <span className="font-bold text-lg tracking-tighter">One-Look</span>
             </div>
 
             <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
@@ -129,16 +129,16 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 {(status === "idle" || status === 'loading') && (
                     <div className="bg-black border border-zinc-800 p-8 rounded-3xl text-center space-y-8 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
                         <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200">
-                            <ShieldAlert className="w-10 h-10" />
+                            <SquareAsterisk className="w-10 h-10" />
                         </div>
                         <div className="select-none">
                             <h2 className="text-3xl font-bold mb-4">
-                                Decrypt Message
+                                Decrypt Secret
                             </h2>
                             <p className="text-zinc-500 leading-relaxed">
-                                You are about to view a one-time secret.
+                                You are about to view a secret.
                                 <br />
-                                <span className="text-zinc-400 font-medium">It will be permanently deleted once displayed.</span>
+                                <span className="text-zinc-400 font-medium">It vanishes completely once displayed.</span>
                             </p>
                         </div>
 
@@ -147,7 +147,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 <input
                                     value={inputKey}
                                     onChange={(e) => setInputKey(e.target.value)}
-                                    placeholder="Enter decryption key"
+                                    placeholder="Paste decryption key"
                                     className="w-full p-4 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all text-center font-mono placeholder:text-zinc-600"
                                 />
                             </div>
@@ -161,7 +161,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             {status === 'loading' ? (
                                 <><Loader2 className="animate-spin w-5 h-5" /> <span>Decrypting...</span></>
                             ) : (
-                                "View Secret"
+                                "Reveal Secret"
                             )}
                         </button>
                     </div>
@@ -173,9 +173,10 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             <div className="flex items-center justify-between select-none">
                                 <div className="flex items-center space-x-2 text-white">
                                     <LockOpen className="w-6 h-6" />
-                                    <span className="font-bold text-lg">Decrypted Content</span>
+                                    <span className="font-bold text-lg">Decrypted</span>
                                 </div>
-                                <span className="text-xs text-red-400 font-medium bg-red-950/30 px-2 py-1 rounded">Burned from server</span>
+                                {/* 优雅的灰色 Badge */}
+                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold bg-zinc-900/50 border border-zinc-800 px-2 py-1 rounded">Vanished from server</span>
                             </div>
 
                             {secretType === SecretTypes.TEXT && (

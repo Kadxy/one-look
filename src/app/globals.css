@@ -4,7 +4,8 @@
 
     html,
     body {
-        background-color: #000000;
+        background-color: #050505;
+        /* 稍微提亮一点点黑，更有质感 */
         color: #e4e4e7;
     }
 
@@ -16,17 +17,17 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #000000;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
     background: #27272a;
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -50,25 +51,19 @@
         transform: translateX(0);
     }
 
-    10%,
-    30%,
-    50%,
-    70%,
-    90% {
+    20%,
+    60% {
         transform: translateX(-4px);
     }
 
-    /* 减小幅度，更优雅 */
-    20%,
     40%,
-    60%,
     80% {
         transform: translateX(4px);
     }
 }
 
 .animate-shake {
-    animation: shake 0.4s ease-in-out;
+    animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 /* Underline slide */
@@ -79,28 +74,27 @@
 .underline-slide::after {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: 2px;
     left: 0;
     width: 100%;
-    height: 2px;
-    background: linear-gradient(to right, #52525b, #ffffff, #52525b);
-    /* 更明显的下划线 */
+    height: 1px;
+    background: currentColor;
     transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    transform-origin: right;
+    transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+    opacity: 0.5;
 }
 
 .underline-slide:hover::after {
     transform: scaleX(1);
+    transform-origin: left;
 }
 
-/* Gradient text - 增强对比度 */
+/* Platinum Gradient - 更高级的金属质感 */
 .text-gradient {
-    background: linear-gradient(to bottom right, #ffffff 30%, #71717a 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    /* 强制透明，防止被其他类覆盖 */
     display: inline-block;
-    /* 防止裁剪问题 */
 }
