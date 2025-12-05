@@ -16,6 +16,7 @@ export enum SecretTypes {
 // Default: 3MB
 export const MAX_FILE_SIZE = (() => {
     const envValue = process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB;
-    const sizeInMB = envValue ? parseFloat(envValue) : 3;
+    const parsed = envValue ? parseFloat(envValue) : NaN;
+    const sizeInMB = !isNaN(parsed) ? parsed : 3;
     return Math.max(1, sizeInMB) * 1024 * 1024;
 })();
