@@ -1,31 +1,32 @@
 "use client";
 
-import { X, ShieldCheck, KeyRound, Flame, Lock } from "lucide-react";
+import { X, ShieldCheck, KeyRound, Flame, Lock, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const [render, setRender] = useState(false);
-    const [visible, setVisible] = useState(false);
+    const [isRendered, setIsRendered] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setRender(true);
-            // 稍微延迟一点点以触发 CSS transition
-            requestAnimationFrame(() => setVisible(true));
+            setIsRendered(true);
+            // 双重保险：确保 DOM 挂载后再触发动画类名
+            const timer = setTimeout(() => setIsVisible(true), 10);
+            return () => clearTimeout(timer);
         } else {
-            setVisible(false);
-            const timer = setTimeout(() => setRender(false), 300); // 等待动画结束
+            setIsVisible(false);
+            const timer = setTimeout(() => setIsRendered(false), 300);
             return () => clearTimeout(timer);
         }
     }, [isOpen]);
 
-    if (!render) return null;
+    if (!isRendered) return null;
 
     return (
         <div className={cn(
-            "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ease-out",
-            visible ? "opacity-100 backdrop-blur-sm bg-black/60" : "opacity-0 backdrop-blur-none bg-black/0"
+            "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ease-out select-none",
+            isVisible ? "opacity-100 backdrop-blur-md bg-black/60" : "opacity-0 backdrop-blur-none bg-black/0"
         )}>
             <div
                 className="absolute inset-0"
@@ -33,57 +34,68 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
             />
 
             <div className={cn(
-                "relative w-full max-w-2xl bg-[#0A0A0A] border border-zinc-800/80 rounded-3xl p-8 shadow-2xl transition-all duration-300 ease-out transform",
-                visible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-4 opacity-0"
+                "relative w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-3xl p-8 shadow-2xl transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) transform overflow-hidden",
+                isVisible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"
             )}>
+                {/* 装饰性背景光 */}
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-zinc-800/20 blur-3xl rounded-full pointer-events-none"></div>
+
                 <button
                     onClick={onClose}
-                    className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-zinc-200 transition-colors rounded-full hover:bg-zinc-800/50 cursor-pointer"
+                    className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-zinc-200 transition-colors rounded-full hover:bg-zinc-800/50 cursor-pointer z-10"
                 >
                     <X className="w-5 h-5" />
                 </button>
 
                 <h2 className="text-xl font-bold mb-2 text-zinc-100 tracking-tight">Zero-Knowledge Architecture</h2>
-                <p className="text-zinc-500 mb-8 text-sm">How One-Look protects the secret.</p>
+                <p className="text-zinc-500 mb-10 text-sm font-medium">Trust through mathematics, not promises.</p>
 
-                <div className="grid md:grid-cols-2 gap-x-8 gap-y-10">
-                    <div className="space-y-3">
+                <div className="grid md:grid-cols-2 gap-x-12 gap-y-12">
+                    <div className="space-y-3 group">
                         <div className="flex items-center gap-3 text-zinc-200">
-                            <KeyRound className="w-5 h-5 text-zinc-400" />
-                            <h3 className="font-medium text-sm">Browser Encryption</h3>
+                            <div className="p-2 bg-zinc-900 rounded-lg group-hover:bg-zinc-800 transition-colors">
+                                <KeyRound className="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <h3 className="font-semibold text-sm tracking-wide">Client-Side Encryption</h3>
                         </div>
-                        <p className="text-xs text-zinc-500 leading-relaxed pl-8 border-l border-zinc-900">
-                            Encryption keys are generated locally. The secret is sealed with AES-256-GCM <strong>before</strong> leaving the device.
+                        <p className="text-xs text-zinc-500 leading-relaxed font-mono">
+                            Data is sealed with <span className="text-zinc-400">AES-256-GCM</span> within your browser's runtime. The plaintext never touches the network stack.
                         </p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 group">
                         <div className="flex items-center gap-3 text-zinc-200">
-                            <Lock className="w-5 h-5 text-zinc-400" />
-                            <h3 className="font-medium text-sm">Blind Server</h3>
+                            <div className="p-2 bg-zinc-900 rounded-lg group-hover:bg-zinc-800 transition-colors">
+                                <Lock className="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <h3 className="font-semibold text-sm tracking-wide">Blind Storage</h3>
                         </div>
-                        <p className="text-xs text-zinc-500 leading-relaxed pl-8 border-l border-zinc-900">
-                            The server stores only the encrypted blob. The decryption key travels in the URL hash, which the server <strong>never</strong> receives.
+                        <p className="text-xs text-zinc-500 leading-relaxed font-mono">
+                            The server acts as a dumb store for opaque blobs. The decryption key is anchored in the <span className="text-zinc-400">URL fragment (#)</span>, which is never sent to the server.
                         </p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 group">
                         <div className="flex items-center gap-3 text-zinc-200">
-                            <Flame className="w-5 h-5 text-zinc-400" />
-                            <h3 className="font-medium text-sm">Atomic Destruction</h3>
+                            <div className="p-2 bg-zinc-900 rounded-lg group-hover:bg-zinc-800 transition-colors">
+                                <Flame className="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <h3 className="font-semibold text-sm tracking-wide">Atomic Destruction</h3>
                         </div>
-                        <p className="text-xs text-zinc-500 leading-relaxed pl-8 border-l border-zinc-900">
-                            Retrieving the secret triggers an atomic <code>GET + DEL</code> operation in memory. No backups, no trace.
+                        <p className="text-xs text-zinc-500 leading-relaxed font-mono">
+                            Retrieval triggers a Redis <span className="text-zinc-400">GETDEL</span> atomic operation. The data is wiped from memory instantly upon access. No race conditions.
                         </p>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 group">
                         <div className="flex items-center gap-3 text-zinc-200">
-                            <ShieldCheck className="w-5 h-5 text-zinc-400" />
-                            <h3 className="font-medium text-sm">Transparent</h3>
+                            <div className="p-2 bg-zinc-900 rounded-lg group-hover:bg-zinc-800 transition-colors">
+                                <ShieldCheck className="w-4 h-4 text-zinc-400" />
+                            </div>
+                            <h3 className="font-semibold text-sm tracking-wide">Open Source</h3>
                         </div>
-                        <p className="text-xs text-zinc-500 leading-relaxed pl-8 border-l border-zinc-900">
-                            The code is open source. No hidden logic. Verify the cryptography implementation on GitHub.
+                        <p className="text-xs text-zinc-500 leading-relaxed font-mono">
+                            No analytics. No tracking. No hidden backdoors. Verify the cryptographic implementation yourself on GitHub.
                         </p>
                     </div>
                 </div>

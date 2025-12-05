@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# One-Look
+
+**One-Look** is an end-to-end encrypted, ephemeral secret sharing tool. 
+Secrets are encrypted in the browser (client-side) before being sent to the server. The server only stores the encrypted blob. The decryption key is part of the URL hash and is never sent to the server.
+
+Once a secret is viewed, it is atomically deleted from the database.
+
+## Features
+
+- **End-to-End Encryption**: AES-256-GCM encryption in the browser.
+- **Zero-Knowledge**: The server never sees the key or the plaintext.
+- **Burn on Read**: Secrets are deleted instantly upon retrieval (Redis `GETDEL`).
+- **File Support**: Securely share text or files (up to 3MB).
+- **TTL**: Auto-expiry if not viewed within a set time.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+You need a Redis instance. You can use [Upstash](https://upstash.com/) for a free managed Redis database.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   git clone [https://github.com/yourusername/one-look.git](https://github.com/yourusername/one-look.git)
+   cd one-look
+   ```
 
-## Learn More
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+3. Set up environment variables:
+   Create a `.env` file in the root directory and add your Redis URL:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   REDIS_URL="redis://default:password@your-redis-url:port"
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Run the development server:
 
-## Deploy on Vercel
+   ```bash
+    pnpm dev
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    Open [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000) with your browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment on Vercel
+
+1.  Push your code to a GitHub repository.
+2.  Import the project into Vercel.
+3.  In the Vercel project settings, go to **Environment Variables**.
+4.  Add `REDIS_URL` with your Redis connection string (e.g., from Upstash).
+5.  Deploy.
+
+## Security
+
+  - **Encryption**: Web Crypto API (AES-GCM).
+  - **Keys**: Generated client-side, embedded in the URL fragment (`#`).
+  - **Storage**: Encrypted blobs only.
+
+## License
+
+MIT

@@ -14,7 +14,6 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-6 overflow-hidden bg-black text-zinc-200">
 
-      {/* Top Left Logo */}
       <div className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000">
         <Logo className="w-8 h-8 text-zinc-100" />
         <span className="font-bold text-xl tracking-tighter text-zinc-200">One-Look</span>
@@ -62,8 +61,8 @@ export default function Home() {
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 hover:border-zinc-700 hover:bg-zinc-900 transition-all duration-300 group"
         >
-          <GithubIcon size={16} className="text-zinc-600 group-hover:text-zinc-200 transition-colors" />
-          <span className="text-xs font-medium text-zinc-600 group-hover:text-zinc-300 transition-colors">Source</span>
+          <GithubIcon size={18} className="text-zinc-600 group-hover:text-zinc-200 transition-colors" />
+          <span className="text-xs font-medium text-zinc-600 group-hover:text-zinc-300 transition-colors">Kadxy/One-Look</span>
         </a>
       </div>
 

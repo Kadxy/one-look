@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, SquareAsterisk } from "lucide-react";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ScanEye, ShieldPlus, ArrowRight } from "lucide-react";
 import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
@@ -116,20 +116,21 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
     return (
         <main className="relative flex min-h-screen flex-col items-center justify-center p-6 bg-black text-zinc-200 transition-colors duration-300">
-            {/* Logo */}
-            <div className="absolute top-8 left-8 z-20 flex items-center gap-3 select-none opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.location.href = '/'}>
-                <Logo className="w-6 h-6 text-zinc-100" />
-                <span className="font-bold text-lg tracking-tighter">One-Look</span>
+            {/* Logo - Fixed Size Consistency */}
+            <div className="absolute top-8 left-8 z-20 flex items-center gap-3 select-none opacity-50 hover:opacity-100 transition-opacity cursor-pointer group" onClick={() => window.location.href = '/'}>
+                <Logo className="w-8 h-8 text-zinc-100 transition-transform group-hover:scale-105" />
+                <span className="font-bold text-xl tracking-tighter">One-Look</span>
             </div>
 
             <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
 
-            <div className="w-full max-w-lg z-10">
+            <div className="w-full max-w-lg z-10 flex flex-col gap-8">
 
                 {(status === "idle" || status === 'loading') && (
                     <div className="bg-black border border-zinc-800 p-8 rounded-3xl text-center space-y-8 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
-                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200">
-                            <SquareAsterisk className="w-10 h-10" />
+                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200 relative group">
+                            <div className="absolute inset-0 bg-zinc-800/20 rounded-full blur-xl group-hover:bg-zinc-700/30 transition-all duration-500"></div>
+                            <ScanEye className="w-10 h-10 relative z-10" />
                         </div>
                         <div className="select-none">
                             <h2 className="text-3xl font-bold mb-4">
@@ -168,71 +169,84 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 )}
 
                 {status === "success" && (
-                    <div className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl animate-in zoom-in-95 duration-300">
-                        <div className="p-6 md:p-8 space-y-6">
-                            <div className="flex items-center justify-between select-none">
-                                <div className="flex items-center space-x-2 text-white">
-                                    <LockOpen className="w-6 h-6" />
-                                    <span className="font-bold text-lg">Decrypted</span>
-                                </div>
-                                {/* 优雅的灰色 Badge */}
-                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold bg-zinc-900/50 border border-zinc-800 px-2 py-1 rounded">Vanished from server</span>
-                            </div>
-
-                            {secretType === SecretTypes.TEXT && (
-                                <>
-                                    <div className="relative">
-                                        <pre className={`w-full h-64 p-4 bg-zinc-950 rounded-xl border border-zinc-900 text-white font-mono text-sm whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar`}>
-                                            {secretContent}
-                                        </pre>
+                    <div className="space-y-6 animate-in zoom-in-95 duration-500">
+                        <div className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl">
+                            <div className="p-6 md:p-8 space-y-6">
+                                <div className="flex items-center justify-between select-none">
+                                    <div className="flex items-center space-x-2 text-white">
+                                        <LockOpen className="w-6 h-6" />
+                                        <span className="font-bold text-lg">Decrypted</span>
                                     </div>
-                                    <div className="flex gap-3 select-none">
-                                        <button
-                                            onClick={copyContent}
-                                            className="flex-1 py-3 bg-white text-black font-bold rounded-xl flex items-center justify-center space-x-2 hover:bg-zinc-200 transition-opacity cursor-pointer"
-                                        >
-                                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                            <span>{isCopied ? "Copied" : "Copy"}</span>
-                                        </button>
+                                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold bg-zinc-900/50 border border-zinc-800 px-2 py-1 rounded">Vanished from server</span>
+                                </div>
+
+                                {secretType === SecretTypes.TEXT && (
+                                    <>
+                                        <div className="relative">
+                                            <pre className={`w-full h-64 p-4 bg-zinc-950 rounded-xl border border-zinc-900 text-white font-mono text-sm whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar`}>
+                                                {secretContent}
+                                            </pre>
+                                        </div>
+                                        <div className="flex gap-3 select-none">
+                                            <button
+                                                onClick={copyContent}
+                                                className="flex-1 py-3 bg-white text-black font-bold rounded-xl flex items-center justify-center space-x-2 hover:bg-zinc-200 transition-opacity cursor-pointer"
+                                            >
+                                                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                <span>{isCopied ? "Copied" : "Copy"}</span>
+                                            </button>
+                                            <button
+                                                onClick={downloadContent}
+                                                className="px-4 py-3 bg-zinc-900 text-zinc-400 font-medium rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
+                                                title="Save as file"
+                                            >
+                                                <Download className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+
+                                {secretType === SecretTypes.FILE && secretFile && (
+                                    <>
+                                        <div className="w-full h-64 bg-zinc-950 rounded-xl border border-zinc-900 flex flex-col items-center justify-center gap-4 text-center p-6 select-none">
+                                            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                {(() => {
+                                                    const Icon = getFileIcon(secretFile.fileType);
+                                                    return <Icon className="w-8 h-8 text-zinc-400" />;
+                                                })()}
+                                            </div>
+                                            <div className="space-y-1 overflow-hidden w-full">
+                                                <p className="text-zinc-200 font-medium truncate px-4" title={secretFile.fileName}>
+                                                    {secretFile.fileName}
+                                                </p>
+                                                <p className="text-zinc-500 text-sm">
+                                                    {secretFile.fileType || "Unknown Type"}
+                                                </p>
+                                            </div>
+                                        </div>
                                         <button
                                             onClick={downloadContent}
-                                            className="px-4 py-3 bg-zinc-900 text-zinc-400 font-medium rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
-                                            title="Save as file"
+                                            className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center space-x-2 cursor-pointer select-none"
                                         >
                                             <Download className="w-5 h-5" />
+                                            <span>Download File</span>
                                         </button>
-                                    </div>
-                                </>
-                            )}
-
-                            {secretType === SecretTypes.FILE && secretFile && (
-                                <>
-                                    <div className="w-full h-64 bg-zinc-950 rounded-xl border border-zinc-900 flex flex-col items-center justify-center gap-4 text-center p-6 select-none">
-                                        <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center">
-                                            {(() => {
-                                                const Icon = getFileIcon(secretFile.fileType);
-                                                return <Icon className="w-8 h-8 text-zinc-400" />;
-                                            })()}
-                                        </div>
-                                        <div className="space-y-1 overflow-hidden w-full">
-                                            <p className="text-zinc-200 font-medium truncate px-4" title={secretFile.fileName}>
-                                                {secretFile.fileName}
-                                            </p>
-                                            <p className="text-zinc-500 text-sm">
-                                                {secretFile.fileType || "Unknown Type"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={downloadContent}
-                                        className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center space-x-2 cursor-pointer select-none"
-                                    >
-                                        <Download className="w-5 h-5" />
-                                        <span>Download File</span>
-                                    </button>
-                                </>
-                            )}
+                                    </>
+                                )}
+                            </div>
                         </div>
+
+                        {/* Try to create another */}
+                        <a
+                            href="/"
+                            className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer group select-none border border-transparent hover:border-zinc-800"
+                        >
+                            <span className="flex items-center justify-center gap-2 text-sm font-medium">
+                                <ShieldPlus className="w-4 h-4" />
+                                <span>Secure a new secret</span>
+                                <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                            </span>
+                        </a>
                     </div>
                 )}
 
@@ -258,7 +272,11 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                         </div>
                     </div>
                 )}
+            </div>
 
+            {/* Simple Footer */}
+            <div className="absolute bottom-6 left-0 right-0 text-center select-none pointer-events-none">
+                <p className="text-[10px] text-zinc-700 font-mono tracking-widest uppercase opacity-50">Powered by One Look</p>
             </div>
         </main >
     );
