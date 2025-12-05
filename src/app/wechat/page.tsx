@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { ExternalLink, ShieldAlert } from "lucide-react";
 
 export default function WeChatIntercept() {

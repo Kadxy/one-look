@@ -390,8 +390,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                     {/* Updated Main Button: Better Height & Glow Effect */}
                     <button
                         onClick={handleCreate}
+                        className={cn("h-12 group w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 active:scale-[0.99] cursor-pointer select-none",
+                            isLoading && "opacity-80 shadow-none scale-[1.01]"
+                        )}
                         disabled={isLoading}
-                        className="h-12 group w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] cursor-pointer select-none"
                     >
                         {isLoading ? (
                             <div className="flex items-center space-x-2">
