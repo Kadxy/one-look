@@ -7,7 +7,7 @@ const getRedisUrl = () => {
     throw new Error('REDIS_URL is not defined');
 };
 
-// 使用 globalThis 防止 Next.js 热重载导致创建过多连接
+// Use globalThis to prevent creating too many connections due to Next.js hot reload
 const globalForRedis = globalThis as unknown as {
     redis: Redis | undefined;
 };

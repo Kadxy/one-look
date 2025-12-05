@@ -5,7 +5,7 @@ import { generateKey, encryptData } from "@/lib/crypto";
 import {
     Copy, Check, Link2, Clock, ChevronDown, Upload,
     Lock, CloudUpload, Key, ShieldCheck,
-    FileText, X, Image as ImageIcon, Video, Music, Ghost, ArrowRight
+    FileText, X, Image as ImageIcon, Video, Music, ArrowRight
 } from "lucide-react";
 import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes } from "@/lib/constants";
@@ -44,7 +44,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
     useEffect(() => {
         setInresult(resultLinks.length > 0)
-    }, [resultLinks])
+    }, [resultLinks, setInresult])
 
     const getFileIcon = (mimeType: string) => {
         if (mimeType.startsWith('image/')) return ImageIcon;
@@ -387,7 +387,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         </div>
                     </div>
 
-                    {/* Updated Main Button: Better Height & Glow Effect */}
+                    {/* Main Action Button */}
                     <button
                         onClick={handleCreate}
                         className={cn("h-12 group w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 active:scale-[0.99] cursor-pointer select-none",

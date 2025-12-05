@@ -1,30 +1,61 @@
 "use client";
 
 import { X, ShieldCheck, KeyRound, Flame, Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const [render, setRender] = useState(false);
-    const [visible, setVisible] = useState(false);
+    // visible controls animation state, shouldRender controls DOM presence
+    const [animationState, setAnimationState] = useState<"entering" | "visible" | "leaving" | "hidden">(
+        isOpen ? "entering" : "hidden"
+    );
+    const animationTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+            onClose();
+        }
+    }, [onClose]);
+
+    // Synchronously update state based on isOpen prop changes during render
+    if (isOpen && animationState === "hidden") {
+        setAnimationState("entering");
+    } else if (!isOpen && (animationState === "visible" || animationState === "entering")) {
+        setAnimationState("leaving");
+    }
 
     useEffect(() => {
-        if (isOpen) {
-            setRender(true);
-            requestAnimationFrame(() => setVisible(true));
-        } else {
-            setVisible(false);
-            const timer = setTimeout(() => setRender(false), 300);
-            return () => clearTimeout(timer);
+        if (animationState === "entering") {
+            // Use double RAF to ensure the DOM is painted before triggering the animation
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setAnimationState("visible");
+                });
+            });
+        } else if (animationState === "leaving") {
+            animationTimerRef.current = setTimeout(() => setAnimationState("hidden"), 300);
         }
-    }, [isOpen]);
 
-    if (!render) return null;
+        if (isOpen) {
+            document.addEventListener("keydown", handleKeyDown);
+        }
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+            if (animationTimerRef.current) {
+                clearTimeout(animationTimerRef.current);
+            }
+        };
+    }, [animationState, isOpen, handleKeyDown]);
+
+    if (animationState === "hidden") return null;
+
+    const isVisible = animationState === "visible";
 
     return (
         <div className={cn(
             "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ease-out select-none",
-            visible ? "opacity-100 backdrop-blur-md bg-black/60" : "opacity-0 backdrop-blur-none bg-black/0"
+            isVisible ? "opacity-100 backdrop-blur-md bg-black/60" : "opacity-0 backdrop-blur-none bg-black/0"
         )}>
             <div
                 className="absolute inset-0"
@@ -33,9 +64,9 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
 
             <div className={cn(
                 "relative w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-3xl p-8 shadow-2xl transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) transform overflow-hidden",
-                visible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"
+                isVisible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"
             )}>
-                {/* 装饰性背景光 */}
+                {/* Decorative background glow */}
                 <div className="absolute -top-20 -right-20 w-64 h-64 bg-zinc-800/20 blur-3xl rounded-full pointer-events-none"></div>
 
                 <button
@@ -45,7 +76,6 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
                     <X className="w-5 h-5" />
                 </button>
 
-                {/* 字体修正：移除 tracking-tight */}
                 <h2 className="text-xl font-bold mb-2 text-zinc-100">Zero-Knowledge Architecture</h2>
                 <p className="text-zinc-500 mb-10 text-sm font-medium">Trust through mathematics, not promises.</p>
 
@@ -58,7 +88,7 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
                             <h3 className="font-semibold text-sm tracking-wide">Client-Side Encryption</h3>
                         </div>
                         <p className="text-xs text-zinc-500 leading-relaxed font-mono">
-                            Data is sealed with <span className="text-zinc-400">AES-256-GCM</span> within your browser's runtime. The plaintext never touches the network stack.
+                            Data is sealed with <span className="text-zinc-400">AES-256-GCM</span> within your browser&apos;s runtime. The plaintext never touches the network stack.
                         </p>
                     </div>
 

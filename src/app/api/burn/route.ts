@@ -3,7 +3,7 @@ import { redis } from '@/lib/redis';
 import { getRedisKey } from '@/lib/utils';
 import { VaultData } from '../vault/route';
 
-export interface BurnResponse extends VaultData { }
+export type BurnResponse = VaultData;
 
 export async function POST(request: Request) {
     try {
