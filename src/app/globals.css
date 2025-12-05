@@ -6,7 +6,6 @@
     body {
         background-color: #000000;
         color: #e4e4e7;
-        /* zinc-200 */
     }
 
     ::selection {
@@ -15,7 +14,7 @@
     }
 }
 
-/* Custom Scrollbar for Geek interaction */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -27,28 +26,23 @@
 
 ::-webkit-scrollbar-thumb {
     background: #27272a;
-    /* zinc-800 */
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: #3f3f46;
-    /* zinc-700 */
 }
 
-/* Hide scrollbar but keep scroll functionality */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
 
 .no-scrollbar {
     -ms-overflow-style: none;
-    /* IE and Edge */
     scrollbar-width: none;
-    /* Firefox */
 }
 
-/* Shake animation for input validation */
+/* Animation */
 @keyframes shake {
 
     0%,
@@ -61,22 +55,23 @@
     50%,
     70%,
     90% {
-        transform: translateX(-8px);
+        transform: translateX(-4px);
     }
 
+    /* 减小幅度，更优雅 */
     20%,
     40%,
     60%,
     80% {
-        transform: translateX(8px);
+        transform: translateX(4px);
     }
 }
 
 .animate-shake {
-    animation: shake 0.5s ease-in-out;
+    animation: shake 0.4s ease-in-out;
 }
 
-/* Underline slide animation - left to right */
+/* Underline slide */
 .underline-slide {
     position: relative;
 }
@@ -88,20 +83,24 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background: linear-gradient(to right, #fff, #a1a1aa);
+    background: linear-gradient(to right, #52525b, #ffffff, #52525b);
+    /* 更明显的下划线 */
     transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.4s ease-out;
+    transform-origin: center;
+    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .underline-slide:hover::after {
     transform: scaleX(1);
 }
 
-/* Gradient text */
+/* Gradient text - 增强对比度 */
 .text-gradient {
-    background: linear-gradient(to bottom, #ffffff, #d4d4d8);
+    background: linear-gradient(to bottom right, #ffffff 30%, #71717a 100%);
     -webkit-background-clip: text;
     background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* 强制透明，防止被其他类覆盖 */
+    display: inline-block;
+    /* 防止裁剪问题 */
 }
