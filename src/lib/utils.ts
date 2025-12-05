@@ -33,3 +33,7 @@ export function downloadTextFile(content: string, filename: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
+export const getShareLink = (id: string, hash: string, sharePath = 's') => {
+    return `${window.location.origin}/${sharePath}/${id}#${hash}`;
+}
