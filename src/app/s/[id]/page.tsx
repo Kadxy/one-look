@@ -94,10 +94,10 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 throw new Error("Invalid key. Unable to decrypt.");
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setStatus("error");
-            setErrorMsg(err.message || "An unexpected error occurred.");
+            setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred.");
         }
     };
 
@@ -249,8 +249,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             </div>
                         </div>
 
-                        {/* Try to create another - Fixed Styling */}
-                        <a
+                        {/* Navigate to create another secret */}
+                        <Link
                             href="/"
                             className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 bg-zinc-900/20 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer group select-none border border-zinc-800/50 hover:border-zinc-800"
                         >
@@ -259,7 +259,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 <span>Secure another secret</span>
                                 <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                             </span>
-                        </a>
+                        </Link>
                     </div>
                 )}
 
@@ -276,18 +276,18 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                         </div>
 
                         <div className="pt-4 flex flex-col gap-3 select-none">
-                            <a
+                            <Link
                                 href="/"
                                 className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-colors block"
                             >
                                 Create New Secret
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Simple Footer - Lighter color */}
+            {/* Footer */}
             <div className="absolute bottom-6 left-0 right-0 text-center select-none pointer-events-none">
                 <p className="text-[10px] text-zinc-600 font-mono tracking-widest uppercase">Powered by One Look</p>
             </div>
