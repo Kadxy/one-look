@@ -2,10 +2,16 @@
 
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, HatGlasses, LockOpen } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile } from "@/lib/utils";
+import { Loader2, EyeOff, Copy, Download, Check, HatGlasses, LockOpen, FileText } from "lucide-react";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
+
+interface DecryptedFile {
+    fileName: string;
+    fileType: string;
+    fileData: string; // Base64 Data URL
+}
 
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -14,6 +20,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     const [errorMsg, setErrorMsg] = useState("");
 
     const [secretContent, setSecretContent] = useState("");
+    const [secretFile, setSecretFile] = useState<DecryptedFile | null>(null);
+
     const [isCopied, setIsCopied] = useState(false);
 
     const [inputKey, setInputKey] = useState("");
@@ -59,18 +67,24 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
             }
 
             if (!res.ok) {
-                // 尝试读取服务端返回的 json error
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.error || "Server error occurred");
             }
 
-            const { secretType, data, iv } = await res.json() as BurnResponse;
-            setSecretType(secretType);
+            const response = await res.json() as BurnResponse;
+            setSecretType(response.secretType);
 
             try {
-                const _secretContent = await decryptData(data, iv, key);
+                const _secretContent = await decryptData(response.data, response.iv, key);
                 if (!_secretContent) throw new Error("Empty result");
-                setSecretContent(_secretContent);
+
+                if (response.secretType === SecretTypes.FILE) {
+                    const parsedFile = JSON.parse(_secretContent) as DecryptedFile;
+                    setSecretFile(parsedFile);
+                } else {
+                    setSecretContent(_secretContent);
+                }
+
                 setStatus("success");
             } catch (decryptionError) {
                 console.error("Decryption failed:", decryptionError);
@@ -91,7 +105,11 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     }
 
     const downloadContent = () => {
-        downloadTextFile(secretContent, `secret-${id}.txt`);
+        if (secretType === SecretTypes.FILE && secretFile) {
+            triggerDownload(secretFile.fileData, secretFile.fileName);
+        } else {
+            downloadTextFile(secretContent, `secret-${id}.txt`);
+        }
     }
 
     return (
@@ -181,14 +199,32 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                         >
                                             <Download className="w-5 h-5" />
                                         </button>
-
                                     </div>
                                 </>
                             )}
 
-                            {secretType === SecretTypes.FILE && (
+                            {secretType === SecretTypes.FILE && secretFile && (
                                 <>
-
+                                    <div className="w-full h-64 bg-zinc-950 rounded-xl border border-zinc-900 flex flex-col items-center justify-center gap-4 text-center p-6">
+                                        <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center">
+                                            <FileText className="w-8 h-8 text-zinc-400" />
+                                        </div>
+                                        <div className="space-y-1 overflow-hidden w-full">
+                                            <p className="text-zinc-200 font-medium truncate px-4" title={secretFile.fileName}>
+                                                {secretFile.fileName}
+                                            </p>
+                                            <p className="text-zinc-500 text-sm">
+                                                {secretFile.fileType || "Unknown Type"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={downloadContent}
+                                        className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        <span>Download File</span>
+                                    </button>
                                 </>
                             )}
                         </div>

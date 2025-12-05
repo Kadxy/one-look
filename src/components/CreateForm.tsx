@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { generateKey, encryptData } from "@/lib/crypto";
-import { Copy, Check, Link2, Clock, ChevronDown, Upload, Lock, CloudUpload, Key, ShieldCheck, Copyright } from "lucide-react";
+import { Copy, Check, Link2, Clock, ChevronDown, Upload, Lock, CloudUpload, Key, ShieldCheck, FileText, X } from "lucide-react";
 import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
@@ -14,12 +14,18 @@ const LOADING_STEPS = [
     { icon: ShieldCheck, text: "Done!", duration: 240 },
 ];
 
+// 3MB limit to be safe with serverless function payload limits (usually 4.5MB)
+const MAX_FILE_SIZE = 3 * 1024 * 1024;
+
 export default function CreateForm({ setInresult }: { setInresult: (inResult: boolean) => void }) {
     const [content, setContent] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
 
-    const [isTtlOpen, setIsTtlOpen] = useState(false);
+    // File handling state
+    const [selectedFile, setSelectedFile] = useState<{ name: string, size: number } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [isTtlOpen, setIsTtlOpen] = useState(false);
     const [ttl, setTtl] = useState(TTL_OPTIONS.at(-1)?.value || 24 * 60 * 60);
     const [linkNum, setLinkNum] = useState(1);
 
@@ -35,6 +41,42 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     useEffect(() => {
         setInresult(resultLinks.length > 0)
     }, [resultLinks])
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > MAX_FILE_SIZE) {
+            alert(`File is too large. Max size is 3MB.`);
+            // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const base64 = ev.target?.result as string;
+            // Pack metadata and content into a JSON string
+            const packedContent = JSON.stringify({
+                fileName: file.name,
+                fileType: file.type,
+                fileData: base64
+            });
+
+            setContent(packedContent);
+            setSecretType(SecretTypes.FILE);
+            setSelectedFile({ name: file.name, size: file.size });
+            if (error) setError(false);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const clearFile = () => {
+        setContent("");
+        setSecretType(SecretTypes.TEXT);
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
 
     const handleCreate = async () => {
         if (!content.trim()) {
@@ -54,6 +96,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             const apiPromise = (async () => {
                 const promises = Array.from({ length: linkNum }).map(async () => {
                     const key = await generateKey();
+                    // content is already a string (either text or JSON string of file)
                     const encrypted = await encryptData(content, key);
                     return { encrypted, key };
                 });
@@ -77,29 +120,32 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 return await Promise.all(uploadPromises);
             })();
 
-            // Step 1: Generating key (fixed duration)
+            // Step 1: Generating key
             await sleep(LOADING_STEPS[0].duration);
 
-            // Step 2: Encrypting (fixed duration)
+            // Step 2: Encrypting
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
 
-            // Step 3: Uploading (wait for API, minimum duration)
+            // Step 3: Uploading
             setLoadingStep(2);
             const uploadStart = Date.now();
-            const results = await apiPromise; // Wait for API to complete
+            const results = await apiPromise;
             const uploadElapsed = Date.now() - uploadStart;
             await sleep(Math.max(0, LOADING_STEPS[2].duration - uploadElapsed));
 
-            // Step 4: All set! (success message)
+            // Step 4: All set!
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
 
             setResultLinks(results);
+            // Don't clear content immediately if user wants to create more with same settings? 
+            // Current UX clears it, so we keep it consistent.
+            clearFile();
             setContent("");
         } catch (err) {
             console.error(err);
-            alert("Error creating link.");
+            alert("Error creating link. Network issue or file too large.");
         } finally {
             setIsLoading(false);
             setLoadingStep(0);
@@ -115,12 +161,20 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const copyAll = () => {
         const text = resultLinks.join("\n");
         copyText(text);
-        setCopiedIndex(999); // 999 marks "All"
+        setCopiedIndex(999);
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
     return (
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
+            {/* Hidden File Input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileSelect}
+            />
+
             {resultLinks.length > 0 ? (
                 <>
                     <div className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
@@ -203,30 +257,54 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                     <div className="relative group">
                         <div className="absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
                         <div className="relative">
-                            <textarea
-                                value={content}
-                                onChange={(e) => {
-                                    setContent(e.target.value);
-                                    if (error) setError(false);
-                                }}
-                                placeholder="Shh! Enter something or upload a file..."
-                                className={cn(
-                                    "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
-                                    error
-                                        ? "border-zinc-600 focus:border-zinc-500 focus:ring-zinc-700/20"
-                                        : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
-                                    isShaking && "animate-shake"
-                                )}
-                                spellCheck={false}
-                            />
-                            {!content && (
-                                <button
-                                    type="button"
-                                    className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
-                                    title="Upload file"
-                                >
-                                    <Upload className="w-4.5 h-4.5" />
-                                </button>
+                            {secretType === SecretTypes.FILE && selectedFile ? (
+                                // File Preview Mode
+                                <div className={cn(
+                                    "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all",
+                                    error ? "border-zinc-600" : "border-zinc-800"
+                                )}>
+                                    <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                        <FileText className="w-6 h-6 text-zinc-400" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
+                                        <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                    <button
+                                        onClick={clearFile}
+                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-red-400 hover:bg-zinc-900 rounded-full transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                // Text Input Mode
+                                <>
+                                    <textarea
+                                        value={content}
+                                        onChange={(e) => {
+                                            setContent(e.target.value);
+                                            if (error) setError(false);
+                                        }}
+                                        placeholder="Shh! Enter something or upload a file..."
+                                        className={cn(
+                                            "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
+                                            error
+                                                ? "border-zinc-600 focus:border-zinc-500 focus:ring-zinc-700/20"
+                                                : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
+                                            isShaking && "animate-shake"
+                                        )}
+                                        spellCheck={false}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
+                                        title="Upload file (Max 3MB)"
+                                    >
+                                        <Upload className="w-4.5 h-4.5" />
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
@@ -323,8 +401,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         )}
                     </button>
                 </div>
-
-
             )}
         </div>
     );

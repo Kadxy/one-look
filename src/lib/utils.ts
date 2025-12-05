@@ -30,13 +30,17 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 export function downloadTextFile(content: string, filename: string) {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
+    triggerDownload(url, filename);
+    URL.revokeObjectURL(url);
+}
+
+export function triggerDownload(url: string, filename: string) {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 export const getShareLink = (id: string, hash: string, sharePath = 's') => {
