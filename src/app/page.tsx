@@ -1,11 +1,11 @@
 "use client"
-
+import Link from "next/link";
 import CreateForm from "@/components/CreateForm";
 import { GithubIcon } from "@/components/icons/GithubIcon";
-import { Logo } from "@/components/icons/Logo";
 import HowItWorks from "@/components/HowItWorks";
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
   const [inResult, setInresult] = useState(false);
@@ -15,8 +15,20 @@ export default function Home() {
     <main className="relative flex min-h-screen flex-col items-center justify-center p-6 overflow-hidden bg-black text-zinc-200">
 
       <div className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000">
-        <Logo className="w-8 h-8 text-zinc-100" />
-        <span className="font-bold text-xl tracking-tighter text-zinc-200">One-Look</span>
+        <Link
+          href="/"
+          className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000 group cursor-pointer"
+        >
+          <Image
+            src="/icon.webp"
+            draggable={false}
+            alt="One-Look Logo"
+            width={48}
+            height={48}
+            className="w-8 h-8 transition-transform group-hover:scale-110"
+          />
+          <span className="font-bold text-xl tracking-tighter text-zinc-200">One-Look</span>
+        </Link>
       </div>
 
       <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>

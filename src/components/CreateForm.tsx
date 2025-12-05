@@ -387,10 +387,11 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         </div>
                     </div>
 
+                    {/* Updated Main Button: Better Height & Glow Effect */}
                     <button
                         onClick={handleCreate}
                         disabled={isLoading}
-                        className="h-14 group w-full py-4 bg-white hover:bg-zinc-200 text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-lg shadow-zinc-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:opacity-50 hover:opacity-90 active:scale-[0.99] cursor-pointer select-none"
+                        className="h-12 group w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.01] active:scale-[0.99] cursor-pointer select-none"
                     >
                         {isLoading ? (
                             <div className="flex items-center space-x-2">
@@ -401,7 +402,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                 <span className="font-medium">{LOADING_STEPS[loadingStep].text}</span>
                             </div>
                         ) : (
-                            <span className="flex items-center gap-2">Create Secret Link <ArrowRight className="w-4 h-4" /></span>
+                            <span className="flex items-center gap-2">Seal the Secret <ArrowRight className="w-4 h-4" /></span>
                         )}
                     </button>
                 </div>

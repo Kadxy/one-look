@@ -5,7 +5,6 @@
     html,
     body {
         background-color: #050505;
-        /* 稍微提亮一点点黑，更有质感 */
         color: #e4e4e7;
     }
 
@@ -90,7 +89,6 @@
     transform-origin: left;
 }
 
-/* Platinum Gradient - 更高级的金属质感 */
 .text-gradient {
     background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
     -webkit-background-clip: text;

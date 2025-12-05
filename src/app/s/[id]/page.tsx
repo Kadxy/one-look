@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
 import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ScanEye, ShieldPlus, ArrowRight } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
-import { Logo } from "@/components/icons/Logo";
+import Image from "next/image";
 
 interface DecryptedFile {
     fileName: string;
@@ -115,11 +116,23 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     }
 
     return (
-        <main className="relative flex min-h-screen flex-col items-center justify-center p-6 bg-black text-zinc-200 transition-colors duration-300">
-            {/* Logo - Fixed Size Consistency */}
-            <div className="absolute top-8 left-8 z-20 flex items-center gap-3 select-none opacity-50 hover:opacity-100 transition-opacity cursor-pointer group" onClick={() => window.location.href = '/'}>
-                <Logo className="w-8 h-8 text-zinc-100 transition-transform group-hover:scale-105" />
-                <span className="font-bold text-xl tracking-tighter">One-Look</span>
+        <main className="relative flex min-h-screen flex-col items-center justify-center p-6 overflow-hidden bg-black text-zinc-200">
+
+            <div className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000">
+                <Link
+                    href="/"
+                    className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000 group cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
+                >
+                    <Image
+                        src="/icon.webp"
+                        draggable={false}
+                        alt="One-Look Logo"
+                        width={48}
+                        height={48}
+                        className="w-8 h-8 transition-transform"
+                    />
+                    <span className="font-bold text-xl tracking-tighter text-zinc-200">One-Look</span>
+                </Link>
             </div>
 
             <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
@@ -156,7 +169,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
                         <button
                             onClick={() => handleBurn()}
-                            className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
+                            className="h-12 w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 disabled:opacity-50 disabled:cursor-not-allowed select-none hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                             disabled={status === 'loading' || (!urlKey && !inputKey.trim())}
                         >
                             {status === 'loading' ? (
@@ -236,14 +249,14 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             </div>
                         </div>
 
-                        {/* Try to create another */}
+                        {/* Try to create another - Fixed Styling */}
                         <a
                             href="/"
-                            className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer group select-none border border-transparent hover:border-zinc-800"
+                            className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 bg-zinc-900/20 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer group select-none border border-zinc-800/50 hover:border-zinc-800"
                         >
                             <span className="flex items-center justify-center gap-2 text-sm font-medium">
                                 <ShieldPlus className="w-4 h-4" />
-                                <span>Secure a new secret</span>
+                                <span>Secure another secret</span>
                                 <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                             </span>
                         </a>
@@ -274,9 +287,9 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 )}
             </div>
 
-            {/* Simple Footer */}
+            {/* Simple Footer - Lighter color */}
             <div className="absolute bottom-6 left-0 right-0 text-center select-none pointer-events-none">
-                <p className="text-[10px] text-zinc-700 font-mono tracking-widest uppercase opacity-50">Powered by One Look</p>
+                <p className="text-[10px] text-zinc-600 font-mono tracking-widest uppercase">Powered by One Look</p>
             </div>
         </main >
     );
