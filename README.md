@@ -7,7 +7,7 @@
   </p>
 
   <p align="center">
-    <a href="https://one-look.vercel.app">View Demo</a>
+    <a href="https://one-look-delta.vercel.app">View Demo</a>
     ·
     <a href="https://github.com/Kadxy/one-look/issues">Report Bug</a>
     ·
