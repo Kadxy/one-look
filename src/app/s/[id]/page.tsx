@@ -190,7 +190,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                                     className="absolute w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"
                                                     initial={{ x: -20, opacity: 0, scale: 0.5 }}
                                                     animate={{ 
-                                                        x: [- 20, 0, 20, 40], 
+                                                        x: [-20, 0, 20, 40], 
                                                         opacity: [0, 1, 1, 0],
                                                         scale: [0.5, 1, 1, 0.5]
                                                     }}
