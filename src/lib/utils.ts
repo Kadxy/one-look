@@ -59,7 +59,9 @@ export function glitchText(
     onUpdate: (glitchedText: string) => void,
     duration = 500
 ): () => void {
-    const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`0123456789';
+    const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+    const BASE_GLITCH_CHANCE = 0.6;
+    const PROGRESS_MULTIPLIER = 0.4;
     const intervalMs = 30;
     const totalSteps = duration / intervalMs;
     let step = 0;
@@ -74,8 +76,8 @@ export function glitchText(
             .map((char) => {
                 if (char === ' ' || char === '\n') return char;
                 // Higher chance of random char as progress increases
-                if (Math.random() < 0.6 + progress * 0.4) {
-                    return glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                if (Math.random() < BASE_GLITCH_CHANCE + progress * PROGRESS_MULTIPLIER) {
+                    return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
                 }
                 return char;
             })

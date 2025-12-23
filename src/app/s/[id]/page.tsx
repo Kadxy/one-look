@@ -16,6 +16,9 @@ interface DecryptedFile {
     fileData: string;
 }
 
+// Animation constants
+const DATA_TRANSFER_PARTICLE_COUNT = 5;
+
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
 
@@ -184,7 +187,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                         exit={{ opacity: 0 }}
                                     >
                                         {/* Animated particles flowing down */}
-                                        {[...Array(5)].map((_, i) => (
+                                        {[...Array(DATA_TRANSFER_PARTICLE_COUNT)].map((_, i) => (
                                             <motion.div
                                                 key={i}
                                                 className="absolute w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"

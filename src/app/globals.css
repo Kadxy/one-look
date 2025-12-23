@@ -117,19 +117,3 @@
 .animate-burn {
     animation: burn-vanish 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
-
-/* Data transfer particle animation */
-@keyframes data-transfer {
-    0% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: translateY(50px) scale(0.8);
-        opacity: 0.8;
-    }
-    100% {
-        transform: translateY(100px) scale(0.5);
-        opacity: 0;
-    }
-}

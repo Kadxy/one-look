@@ -217,6 +217,14 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    const resetToCreateNew = () => {
+        setResultLinks([]);
+        setCopiedIndex(null);
+        setShowInputArea(true);
+        setIsCollapsing(false);
+        setGlitchedText("");
+    };
+
     return (
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
@@ -296,7 +304,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                     </motion.div>
 
                     <button
-                        onClick={() => { setResultLinks([]); setCopiedIndex(null); setShowInputArea(true); setIsCollapsing(false); setGlitchedText(""); }}
+                        onClick={resetToCreateNew}
                         className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-500 select-none"
                     >
                         Create another
