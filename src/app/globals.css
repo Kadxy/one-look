@@ -96,3 +96,40 @@
     color: transparent;
     display: inline-block;
 }
+
+/* Burn/Vanish Animation for vault destruction */
+@keyframes burn-vanish {
+    0% {
+        opacity: 1;
+        filter: brightness(1) blur(0);
+        transform: scale(1);
+    }
+    50% {
+        filter: brightness(3) blur(2px) hue-rotate(-45deg);
+    }
+    100% {
+        opacity: 0;
+        filter: brightness(0) blur(20px);
+        transform: scale(0.1);
+    }
+}
+
+.animate-burn {
+    animation: burn-vanish 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Data transfer particle animation */
+@keyframes data-transfer {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(50px) scale(0.8);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(100px) scale(0.5);
+        opacity: 0;
+    }
+}

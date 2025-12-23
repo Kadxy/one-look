@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ScanEye, ShieldPlus, ArrowRight } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ScanEye, ShieldPlus, ArrowRight, Lock } from "lucide-react";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface DecryptedFile {
     fileName: string;
@@ -29,6 +30,11 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     const [urlKey, setUrlKey] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
     const [isHashChecked, setIsHashChecked] = useState(false);
+    
+    // Animation states for VFX
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [isBurning, setIsBurning] = useState(false);
+    const [showVault, setShowVault] = useState(true);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -57,6 +63,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
         }
 
         setStatus("loading");
+        
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         try {
             const res = await fetch("/api/burn", {
@@ -88,7 +96,19 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                     setSecretContent(_secretContent);
                 }
 
+                // Start the data transfer animation sequence
+                setIsTransferring(true);
+                await sleep(600); // Wait for transfer animation
+                
+                // Start burning the vault icon
+                setIsBurning(true);
+                await sleep(300); // Small delay before showing success
+                
                 setStatus("success");
+                
+                // After burn animation completes, hide the vault
+                await sleep(400);
+                setShowVault(false);
             } catch (decryptionError) {
                 console.error("Decryption failed:", decryptionError);
                 throw new Error("Invalid key. Unable to decrypt.");
@@ -141,10 +161,65 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
                 {(status === "idle" || status === 'loading') && (
                     <div className="bg-black border border-zinc-800 p-8 rounded-3xl text-center space-y-8 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
-                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200 relative group">
-                            <div className="absolute inset-0 bg-zinc-800/20 rounded-full blur-xl group-hover:bg-zinc-700/30 transition-all duration-500"></div>
-                            <ScanEye className="w-10 h-10 relative z-10" />
+                        {/* Server Vault Section */}
+                        <div className="relative">
+                            <div className="flex flex-col items-center gap-2 mb-4">
+                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Server Vault</span>
+                            </div>
+                            <div className={cn(
+                                "w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200 relative group",
+                                isTransferring && "animate-pulse"
+                            )}>
+                                <div className="absolute inset-0 bg-zinc-800/20 rounded-full blur-xl group-hover:bg-zinc-700/30 transition-all duration-500"></div>
+                                <Lock className="w-10 h-10 relative z-10" />
+                            </div>
+                            
+                            {/* Data Transfer Animation */}
+                            <AnimatePresence>
+                                {isTransferring && (
+                                    <motion.div
+                                        className="absolute left-1/2 top-24 -translate-x-1/2"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                    >
+                                        {/* Animated particles flowing down */}
+                                        {[...Array(5)].map((_, i) => (
+                                            <motion.div
+                                                key={i}
+                                                className="absolute w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+                                                initial={{ y: 0, opacity: 1, scale: 1 }}
+                                                animate={{ 
+                                                    y: 80, 
+                                                    opacity: [1, 0.8, 0],
+                                                    scale: [1, 0.8, 0.5]
+                                                }}
+                                                transition={{
+                                                    duration: 0.6,
+                                                    delay: i * 0.1,
+                                                    ease: "easeIn"
+                                                }}
+                                            />
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
+                        
+                        {/* Receiving Area Indicator */}
+                        <div className="flex flex-col items-center gap-2">
+                            <div className={cn(
+                                "w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-300",
+                                isTransferring ? "border-green-500/50 bg-green-500/5" : "border-zinc-700"
+                            )}>
+                                <ScanEye className={cn(
+                                    "w-6 h-6 transition-colors",
+                                    isTransferring ? "text-green-400" : "text-zinc-500"
+                                )} />
+                            </div>
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Your Device</span>
+                        </div>
+                        
                         <div className="select-none">
                             <h2 className="text-3xl font-bold mb-4">
                                 Decrypt Secret
@@ -183,7 +258,35 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
                 {status === "success" && (
                     <div className="space-y-6 animate-in zoom-in-95 duration-500">
-                        <div className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl">
+                        {/* Burning Vault Icon */}
+                        <AnimatePresence>
+                            {showVault && (
+                                <motion.div 
+                                    className="flex justify-center mb-4"
+                                    initial={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                >
+                                    <div className={cn(
+                                        "w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-200 relative",
+                                        isBurning && "animate-burn"
+                                    )}>
+                                        <Lock className="w-8 h-8" />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        
+                        <motion.div 
+                            className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl"
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            transition={{ 
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 25,
+                                delay: 0.2
+                            }}
+                        >
                             <div className="p-6 md:p-8 space-y-6">
                                 <div className="flex items-center justify-between select-none">
                                     <div className="flex items-center space-x-2 text-white">
@@ -247,7 +350,7 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                     </>
                                 )}
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Navigate to create another secret */}
                         <Link
