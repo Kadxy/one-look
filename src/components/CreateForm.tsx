@@ -44,6 +44,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     // Animation states for VFX
     const [glitchedText, setGlitchedText] = useState("");
     const [isGlitching, setIsGlitching] = useState(false);
+    const [isFileGlitching, setIsFileGlitching] = useState(false);
+    const [fileGlitchCode, setFileGlitchCode] = useState("");
     const [isCollapsing, setIsCollapsing] = useState(false);
     const [showInputArea, setShowInputArea] = useState(true);
 
@@ -128,30 +130,9 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setResultLinks([]);
 
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-        
-        // Start glitch effect for text content (not files)
-        if (secretType === SecretTypes.TEXT && content.length > 0) {
-            setIsGlitching(true);
-            const originalContent = content;
-            const stopGlitch = glitchText(originalContent, setGlitchedText, 500);
-            
-            // After glitch, start collapse animation
-            await sleep(500);
-            stopGlitch();
-            setIsGlitching(false);
-            setIsCollapsing(true);
-            
-            // Wait for collapse animation
-            await sleep(400);
-            setShowInputArea(false);
-        } else {
-            // For files, just collapse
-            setIsCollapsing(true);
-            await sleep(400);
-            setShowInputArea(false);
-        }
 
         try {
+            // Start encryption API in background
             const apiPromise = (async () => {
                 const promises = Array.from({ length: linkNum }).map(async () => {
                     const key = await generateKey();
@@ -174,6 +155,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 return await Promise.all(uploadPromises);
             })();
 
+            // Run loading steps in sequence
             await sleep(LOADING_STEPS[0].duration);
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
@@ -184,6 +166,36 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             await sleep(Math.max(0, LOADING_STEPS[2].duration - uploadElapsed));
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
+            
+            // Loading complete - now trigger glitch and collapse animations
+            setIsLoading(false);
+            setLoadingStep(0);
+            
+            // Start glitch effect for text, or file glitch effect
+            if (secretType === SecretTypes.TEXT && content.length > 0) {
+                setIsGlitching(true);
+                const originalContent = content;
+                const stopGlitch = glitchText(originalContent, setGlitchedText, 800);
+                
+                // Wait for glitch effect
+                await sleep(800);
+                stopGlitch();
+                setIsGlitching(false);
+            } else if (secretType === SecretTypes.FILE) {
+                // File glitch effect - visual scrambling with random code
+                setFileGlitchCode(Math.random().toString(36).substring(2, 10).toUpperCase());
+                setIsFileGlitching(true);
+                await sleep(800);
+                setIsFileGlitching(false);
+            }
+            
+            // Collapse animation for both text and files
+            setIsCollapsing(true);
+            await sleep(600);
+            setShowInputArea(false);
+            
+            // Small pause before showing result
+            await sleep(200);
 
             setResultLinks(results);
             clearFile();
@@ -197,8 +209,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setShowInputArea(true);
             setIsCollapsing(false);
             setIsGlitching(false);
+            setIsFileGlitching(false);
             setGlitchedText("");
-        } finally {
             setIsLoading(false);
             setLoadingStep(0);
         }
@@ -222,6 +234,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setCopiedIndex(null);
         setShowInputArea(true);
         setIsCollapsing(false);
+        setIsGlitching(false);
+        setIsFileGlitching(false);
         setGlitchedText("");
     };
 
@@ -338,7 +352,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
                                 <div className="relative">
                                     {secretType === SecretTypes.FILE && selectedFile ? (
-                                        // File Preview
+                                        // File Preview with Glitch Effect
                                         <motion.div 
                                             animate={{ 
                                                 scale: isCollapsing ? 0.8 : 1,
@@ -346,25 +360,60 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                             transition={{ duration: 0.3 }}
                                             className={cn(
                                                 "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
-                                                "border-zinc-800"
+                                                "border-zinc-800",
+                                                isFileGlitching && "border-green-500/50"
                                             )}
                                         >
-                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                                {(() => {
-                                                    const Icon = getFileIcon(selectedFile.type);
-                                                    return <Icon className="w-6 h-6 text-zinc-400" />;
-                                                })()}
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
-                                                <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                            </div>
-                                            <button
-                                                onClick={clearFile}
-                                                className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
+                                            {isFileGlitching ? (
+                                                // File glitch animation
+                                                <>
+                                                    <motion.div 
+                                                        className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center"
+                                                        animate={{ 
+                                                            rotate: [0, 5, -5, 5, -5, 0],
+                                                            scale: [1, 1.1, 0.9, 1.1, 0.9, 1]
+                                                        }}
+                                                        transition={{ duration: 0.3, repeat: Infinity }}
+                                                    >
+                                                        <Lock className="w-6 h-6 text-green-400" />
+                                                    </motion.div>
+                                                    <motion.div 
+                                                        className="text-center"
+                                                        animate={{ 
+                                                            opacity: [1, 0.5, 1, 0.3, 1],
+                                                            x: [0, -2, 2, -2, 0]
+                                                        }}
+                                                        transition={{ duration: 0.2, repeat: Infinity }}
+                                                    >
+                                                        <p className="text-sm font-mono text-green-400 tracking-wider">
+                                                            ENCRYPTING...
+                                                        </p>
+                                                        <p className="text-xs text-green-400/50 mt-1 font-mono">
+                                                            {fileGlitchCode}
+                                                        </p>
+                                                    </motion.div>
+                                                </>
+                                            ) : (
+                                                // Normal file preview
+                                                <>
+                                                    <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                        {(() => {
+                                                            const Icon = getFileIcon(selectedFile.type);
+                                                            return <Icon className="w-6 h-6 text-zinc-400" />;
+                                                        })()}
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
+                                                        <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={clearFile}
+                                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </motion.div>
                                     ) : (
                                         // Text Input with Glitch Effect
