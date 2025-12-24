@@ -155,7 +155,32 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 return await Promise.all(uploadPromises);
             })();
 
-            // Run loading steps in sequence
+            // Start VFX immediately while button is loading
+            // Glitch effect for text, or file glitch effect
+            if (secretType === SecretTypes.TEXT && content.length > 0) {
+                setIsGlitching(true);
+                const originalContent = content;
+                const stopGlitch = glitchText(originalContent, setGlitchedText, 800);
+                
+                // Wait for glitch effect then collapse
+                await sleep(800);
+                stopGlitch();
+                setIsGlitching(false);
+                setIsCollapsing(true);
+                await sleep(500);
+                setShowInputArea(false);
+            } else if (secretType === SecretTypes.FILE) {
+                // File glitch effect - visual scrambling with random code
+                setFileGlitchCode(Math.random().toString(36).substring(2, 10).toUpperCase());
+                setIsFileGlitching(true);
+                await sleep(800);
+                setIsFileGlitching(false);
+                setIsCollapsing(true);
+                await sleep(500);
+                setShowInputArea(false);
+            }
+
+            // Continue with loading steps display while API runs in background
             await sleep(LOADING_STEPS[0].duration);
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
@@ -167,35 +192,9 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
             
-            // Loading complete - now trigger glitch and collapse animations
+            // Loading complete - show results immediately
             setIsLoading(false);
             setLoadingStep(0);
-            
-            // Start glitch effect for text, or file glitch effect
-            if (secretType === SecretTypes.TEXT && content.length > 0) {
-                setIsGlitching(true);
-                const originalContent = content;
-                const stopGlitch = glitchText(originalContent, setGlitchedText, 800);
-                
-                // Wait for glitch effect
-                await sleep(800);
-                stopGlitch();
-                setIsGlitching(false);
-            } else if (secretType === SecretTypes.FILE) {
-                // File glitch effect - visual scrambling with random code
-                setFileGlitchCode(Math.random().toString(36).substring(2, 10).toUpperCase());
-                setIsFileGlitching(true);
-                await sleep(800);
-                setIsFileGlitching(false);
-            }
-            
-            // Collapse animation for both text and files
-            setIsCollapsing(true);
-            await sleep(600);
-            setShowInputArea(false);
-            
-            // Small pause before showing result
-            await sleep(200);
 
             setResultLinks(results);
             clearFile();
