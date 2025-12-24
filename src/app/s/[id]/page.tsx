@@ -3,17 +3,21 @@
 import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ScanEye, ShieldPlus, ArrowRight } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor, Trash2 } from "lucide-react";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface DecryptedFile {
     fileName: string;
     fileType: string;
     fileData: string;
 }
+
+// Animation constants
+const DATA_TRANSFER_PARTICLE_COUNT = 5;
 
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -29,6 +33,10 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
     const [urlKey, setUrlKey] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
     const [isHashChecked, setIsHashChecked] = useState(false);
+    
+    // Animation states for VFX
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [isBurning, setIsBurning] = useState(false);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -57,6 +65,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
         }
 
         setStatus("loading");
+        
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         try {
             const res = await fetch("/api/burn", {
@@ -88,6 +98,16 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                     setSecretContent(_secretContent);
                 }
 
+                // Start the data transfer animation sequence
+                setIsTransferring(true);
+                await sleep(1000); // Wait for transfer animation (slower)
+                
+                // Start burning the cloud icon
+                setIsBurning(true);
+                await sleep(800); // Wait for burn animation to play
+                
+                await sleep(200); // Small pause
+                
                 setStatus("success");
             } catch (decryptionError) {
                 console.error("Decryption failed:", decryptionError);
@@ -140,16 +160,94 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
             <div className="w-full max-w-lg z-10 flex flex-col gap-8">
 
                 {(status === "idle" || status === 'loading') && (
-                    <div className="bg-black border border-zinc-800 p-8 rounded-3xl text-center space-y-8 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
-                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-200 relative group">
-                            <div className="absolute inset-0 bg-zinc-800/20 rounded-full blur-xl group-hover:bg-zinc-700/30 transition-all duration-500"></div>
-                            <ScanEye className="w-10 h-10 relative z-10" />
+                    <div className="bg-black border border-zinc-800 p-6 md:p-8 rounded-3xl text-center space-y-6 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
+                        {/* Horizontal Server -> Local Transfer Visualization */}
+                        <div className="relative flex items-center justify-center gap-4 py-4">
+                            {/* Server (Remote) */}
+                            <div className="flex flex-col items-center gap-2">
+                                <AnimatePresence mode="wait">
+                                    {!isBurning ? (
+                                        <motion.div 
+                                            key="server-normal"
+                                            className={cn(
+                                                "w-16 h-16 md:w-20 md:h-20 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-200 relative transition-all duration-300",
+                                                isTransferring && "ring-2 ring-green-500/50"
+                                            )}
+                                        >
+                                            <Server className={cn(
+                                                "w-8 h-8 md:w-10 md:h-10 relative z-10 transition-colors",
+                                                isTransferring && "text-green-400"
+                                            )} />
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div 
+                                            key="server-deleted"
+                                            className="w-16 h-16 md:w-20 md:h-20 bg-zinc-800/50 rounded-full flex items-center justify-center relative border border-zinc-700"
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ duration: 0.3, ease: "easeOut" }}
+                                        >
+                                            <Trash2 className="w-8 h-8 md:w-10 md:h-10 text-zinc-500" />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                    Server
+                                </span>
+                            </div>
+                            
+                            {/* Transfer Arrow/Particles */}
+                            <div className="relative w-16 md:w-24 h-8 flex items-center justify-center">
+                                <AnimatePresence>
+                                    {isTransferring && !isBurning && (
+                                        <>
+                                            {/* Animated particles flowing right */}
+                                            {[...Array(DATA_TRANSFER_PARTICLE_COUNT)].map((_, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    className="absolute w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"
+                                                    initial={{ x: -20, opacity: 0, scale: 0.5 }}
+                                                    animate={{ 
+                                                        x: [-20, 0, 20, 40], 
+                                                        opacity: [0, 1, 1, 0],
+                                                        scale: [0.5, 1, 1, 0.5]
+                                                    }}
+                                                    transition={{
+                                                        duration: 0.8,
+                                                        delay: i * 0.15,
+                                                        repeat: Infinity,
+                                                        ease: "easeInOut"
+                                                    }}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
+                                </AnimatePresence>
+                                {!isTransferring && (
+                                    <ArrowRight className="w-6 h-6 text-zinc-600" />
+                                )}
+                            </div>
+                            
+                            {/* Local Device */}
+                            <div className="flex flex-col items-center gap-2">
+                                <div className={cn(
+                                    "w-16 h-16 md:w-20 md:h-20 border-2 border-dashed rounded-full flex items-center justify-center transition-all duration-300",
+                                    isTransferring ? "border-green-500/50 bg-green-500/5" : "border-zinc-700 bg-zinc-900/50"
+                                )}>
+                                    <Monitor className={cn(
+                                        "w-8 h-8 md:w-10 md:h-10 transition-colors",
+                                        isTransferring ? "text-green-400" : "text-zinc-500"
+                                    )} />
+                                </div>
+                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Local</span>
+                            </div>
                         </div>
+                        
                         <div className="select-none">
-                            <h2 className="text-3xl font-bold mb-4">
+                            <h2 className="text-2xl md:text-3xl font-bold mb-3">
                                 Decrypt Secret
                             </h2>
-                            <p className="text-zinc-500 leading-relaxed">
+                            <p className="text-zinc-500 text-sm leading-relaxed">
                                 You are about to view a secret.
                                 <br />
                                 <span className="text-zinc-400 font-medium">It vanishes completely once displayed.</span>
@@ -182,8 +280,18 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                 )}
 
                 {status === "success" && (
-                    <div className="space-y-6 animate-in zoom-in-95 duration-500">
-                        <div className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl">
+                    <div className="flex flex-col min-h-[60vh] justify-center">
+                        {/* Centered content */}
+                        <motion.div 
+                            className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl"
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            transition={{ 
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 25
+                            }}
+                        >
                             <div className="p-6 md:p-8 space-y-6">
                                 <div className="flex items-center justify-between select-none">
                                     <div className="flex items-center space-x-2 text-white">
@@ -247,19 +355,26 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                     </>
                                 )}
                             </div>
-                        </div>
+                        </motion.div>
 
-                        {/* Navigate to create another secret */}
-                        <Link
-                            href="/"
-                            className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 bg-zinc-900/20 hover:bg-zinc-900/50 rounded-xl transition-all cursor-pointer group select-none border border-zinc-800/50 hover:border-zinc-800"
+                        {/* Navigate to create another secret - positioned below content, not centered with it */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className="mt-6"
                         >
-                            <span className="flex items-center justify-center gap-2 text-sm font-medium">
-                                <ShieldPlus className="w-4 h-4" />
-                                <span>Secure another secret</span>
-                                <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                            </span>
-                        </Link>
+                            <Link
+                                href="/"
+                                className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 bg-zinc-900/20 hover:bg-zinc-900/50 rounded-xl transition-colors cursor-pointer group select-none border border-zinc-800/50 hover:border-zinc-800"
+                            >
+                                <span className="flex items-center justify-center gap-2 text-sm font-medium">
+                                    <ShieldPlus className="w-4 h-4" />
+                                    <span>Secure another secret</span>
+                                    <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                </span>
+                            </Link>
+                        </motion.div>
                     </div>
                 )}
 

@@ -7,9 +7,10 @@ import {
     Lock, CloudUpload, Key, ShieldCheck,
     FileText, X, Image as ImageIcon, Video, Music, ArrowRight
 } from "lucide-react";
-import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
+import { cn, copyToClipboard as copyText, getShareLink, glitchText } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes, MAX_FILE_SIZE } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
+import { motion } from "framer-motion";
 
 const LOADING_STEPS = [
     { icon: Key, text: "Forging keys...", duration: 500 },
@@ -39,6 +40,11 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
     const [resultLinks, setResultLinks] = useState<string[]>([]);
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+    
+    // Animation states for VFX
+    const [glitchedText, setGlitchedText] = useState("");
+    const [isGlitching, setIsGlitching] = useState(false);
+    const [isFileGlitching, setIsFileGlitching] = useState(false);
 
     useEffect(() => {
         setInresult(resultLinks.length > 0)
@@ -123,6 +129,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         try {
+            // Start encryption API in background
             const apiPromise = (async () => {
                 const promises = Array.from({ length: linkNum }).map(async () => {
                     const key = await generateKey();
@@ -145,6 +152,16 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 return await Promise.all(uploadPromises);
             })();
 
+            // Start VFX immediately while button is loading (visual feedback only)
+            if (secretType === SecretTypes.TEXT && content.length > 0) {
+                setIsGlitching(true);
+                const originalContent = content;
+                glitchText(originalContent, setGlitchedText, 1500);
+            } else if (secretType === SecretTypes.FILE) {
+                setIsFileGlitching(true);
+            }
+
+            // Run loading steps while API runs in background
             await sleep(LOADING_STEPS[0].duration);
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
@@ -155,6 +172,13 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             await sleep(Math.max(0, LOADING_STEPS[2].duration - uploadElapsed));
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
+            
+            // Loading complete - stop VFX and show results immediately
+            setIsGlitching(false);
+            setIsFileGlitching(false);
+            setGlitchedText("");
+            setIsLoading(false);
+            setLoadingStep(0);
 
             setResultLinks(results);
             clearFile();
@@ -164,7 +188,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setCustomPlaceholder("Network error. Please try again.");
             setIsShaking(true);
             setTimeout(() => setIsShaking(false), 2000);
-        } finally {
+            // Reset animation states on error
+            setIsGlitching(false);
+            setIsFileGlitching(false);
+            setGlitchedText("");
             setIsLoading(false);
             setLoadingStep(0);
         }
@@ -183,13 +210,31 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    const resetToCreateNew = () => {
+        setResultLinks([]);
+        setCopiedIndex(null);
+        setIsGlitching(false);
+        setIsFileGlitching(false);
+        setGlitchedText("");
+    };
+
     return (
         <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
             {resultLinks.length > 0 ? (
                 <>
-                    <div className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
+                    <motion.div 
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ 
+                            type: "spring", 
+                            stiffness: 300, 
+                            damping: 20,
+                            duration: 0.5 
+                        }}
+                        className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden"
+                    >
                         <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between select-none">
                             <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium tracking-wide">
                                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -249,10 +294,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                 </button>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
 
                     <button
-                        onClick={() => { setResultLinks([]); setCopiedIndex(null); }}
+                        onClick={resetToCreateNew}
                         className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-500 select-none"
                     >
                         Create another
@@ -261,7 +306,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             ) : (
                 <div className="space-y-6">
                     <div
-                        className="relative group"
+                        className="relative group origin-center"
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
@@ -274,47 +319,88 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         <div className="relative">
                             {secretType === SecretTypes.FILE && selectedFile ? (
                                 // File Preview
-                                <div className={cn(
-                                    "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
-                                    "border-zinc-800"
-                                )}>
-                                    <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                        {(() => {
-                                            const Icon = getFileIcon(selectedFile.type);
-                                            return <Icon className="w-6 h-6 text-zinc-400" />;
-                                        })()}
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
-                                        <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                    </div>
-                                    <button
-                                        onClick={clearFile}
-                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
+                                <div
+                                    className={cn(
+                                        "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
+                                        "border-zinc-800"
+                                    )}
+                                >
+                                    {isFileGlitching ? (
+                                        // Simple loading indicator during encryption
+                                        <>
+                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                <Lock className="w-6 h-6 text-zinc-400 animate-pulse" />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium text-zinc-400">
+                                                    Encrypting...
+                                                </p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        // Normal file preview
+                                        <>
+                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                {(() => {
+                                                    const Icon = getFileIcon(selectedFile.type);
+                                                    return <Icon className="w-6 h-6 text-zinc-400" />;
+                                                })()}
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
+                                                <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                            </div>
+                                            <button
+                                                onClick={clearFile}
+                                                className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
-                                // Text Input
+                                // Text Input with Glitch Effect
                                 <>
-                                    <textarea
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        placeholder={customPlaceholder}
-                                        className={cn(
-                                            "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
-                                            isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
-                                            isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
-                                        )}
-                                        spellCheck={false}
-                                    />
+                                    {isGlitching ? (
+                                        <div
+                                            className={cn(
+                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border border-zinc-800 text-base font-mono leading-relaxed shadow-sm overflow-hidden select-none",
+                                            )}
+                                        >
+                                            <motion.pre 
+                                                className="whitespace-pre-wrap break-words text-green-400 font-mono"
+                                                animate={{ 
+                                                    textShadow: [
+                                                        "0 0 5px rgba(34, 197, 94, 0.5)",
+                                                        "0 0 20px rgba(34, 197, 94, 0.8)",
+                                                        "0 0 5px rgba(34, 197, 94, 0.5)"
+                                                    ]
+                                                }}
+                                                transition={{ duration: 0.1, repeat: Infinity }}
+                                            >
+                                                {glitchedText}
+                                            </motion.pre>
+                                        </div>
+                                    ) : (
+                                        <textarea
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            placeholder={customPlaceholder}
+                                            className={cn(
+                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
+                                                isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
+                                                isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
+                                            )}
+                                            spellCheck={false}
+                                        />
+                                    )}
                                     {isDragging && (
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                             <p className="text-zinc-400 font-medium">Drop to upload</p>
                                         </div>
                                     )}
-                                    {!content && !isDragging && (
+                                    {!content && !isDragging && !isGlitching && (
                                         <button
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
