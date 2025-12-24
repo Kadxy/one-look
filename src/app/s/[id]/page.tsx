@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor, Flame } from "lucide-react";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor } from "lucide-react";
 import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
@@ -182,53 +182,20 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                     ) : (
                                         <motion.div 
                                             key="server-burning"
-                                            className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center relative"
+                                            className="w-16 h-16 md:w-20 md:h-20 bg-zinc-900 rounded-full flex items-center justify-center relative"
                                             initial={{ scale: 1, opacity: 1 }}
                                             animate={{ 
-                                                scale: [1, 1.2, 0.8, 0],
-                                                opacity: [1, 1, 0.5, 0],
-                                                filter: [
-                                                    "brightness(1) blur(0px)",
-                                                    "brightness(3) blur(2px)",
-                                                    "brightness(2) blur(8px)",
-                                                    "brightness(0) blur(20px)"
-                                                ]
+                                                scale: [1, 1.1, 0.9, 0],
+                                                opacity: [1, 0.8, 0.4, 0],
                                             }}
-                                            transition={{ duration: 0.8, ease: "easeOut" }}
+                                            transition={{ duration: 0.6, ease: "easeOut" }}
                                         >
-                                            {/* Explosion particles */}
-                                            {[...Array(8)].map((_, i) => (
-                                                <motion.div
-                                                    key={i}
-                                                    className="absolute w-3 h-3 bg-orange-500 rounded-full"
-                                                    initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                                                    animate={{ 
-                                                        x: Math.cos(i * Math.PI / 4) * 60,
-                                                        y: Math.sin(i * Math.PI / 4) * 60,
-                                                        opacity: 0,
-                                                        scale: 0
-                                                    }}
-                                                    transition={{ duration: 0.6, delay: 0.1 }}
-                                                />
-                                            ))}
-                                            {/* Fire/flame effect */}
-                                            <motion.div
-                                                className="absolute inset-0 bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400 rounded-full"
-                                                animate={{ 
-                                                    scale: [1, 1.5, 0],
-                                                    opacity: [1, 0.8, 0]
-                                                }}
-                                                transition={{ duration: 0.6 }}
-                                            />
-                                            <Flame className="w-8 h-8 md:w-10 md:h-10 text-orange-400 relative z-10 animate-pulse" />
+                                            <Server className="w-8 h-8 md:w-10 md:h-10 text-zinc-400" />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                <span className={cn(
-                                    "text-[10px] uppercase tracking-wider font-semibold transition-colors",
-                                    isBurning ? "text-red-500" : "text-zinc-500"
-                                )}>
-                                    {isBurning ? "Destroyed" : "Server"}
+                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                    {isBurning ? "Deleted" : "Server"}
                                 </span>
                             </div>
                             

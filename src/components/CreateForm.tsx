@@ -10,7 +10,7 @@ import {
 import { cn, copyToClipboard as copyText, getShareLink, glitchText } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes, MAX_FILE_SIZE } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const LOADING_STEPS = [
     { icon: Key, text: "Forging keys...", duration: 500 },
@@ -46,8 +46,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const [isGlitching, setIsGlitching] = useState(false);
     const [isFileGlitching, setIsFileGlitching] = useState(false);
     const [fileGlitchCode, setFileGlitchCode] = useState("");
-    const [isCollapsing, setIsCollapsing] = useState(false);
-    const [showInputArea, setShowInputArea] = useState(true);
 
     useEffect(() => {
         setInresult(resultLinks.length > 0)
@@ -155,32 +153,17 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 return await Promise.all(uploadPromises);
             })();
 
-            // Start VFX immediately while button is loading
-            // Glitch effect for text, or file glitch effect
+            // Start VFX immediately while button is loading (visual feedback only)
             if (secretType === SecretTypes.TEXT && content.length > 0) {
                 setIsGlitching(true);
                 const originalContent = content;
-                const stopGlitch = glitchText(originalContent, setGlitchedText, 800);
-                
-                // Wait for glitch effect then collapse
-                await sleep(800);
-                stopGlitch();
-                setIsGlitching(false);
-                setIsCollapsing(true);
-                await sleep(500);
-                setShowInputArea(false);
+                glitchText(originalContent, setGlitchedText, 1500);
             } else if (secretType === SecretTypes.FILE) {
-                // File glitch effect - visual scrambling with random code
                 setFileGlitchCode(Math.random().toString(36).substring(2, 10).toUpperCase());
                 setIsFileGlitching(true);
-                await sleep(800);
-                setIsFileGlitching(false);
-                setIsCollapsing(true);
-                await sleep(500);
-                setShowInputArea(false);
             }
 
-            // Continue with loading steps display while API runs in background
+            // Run loading steps while API runs in background
             await sleep(LOADING_STEPS[0].duration);
             setLoadingStep(1);
             await sleep(LOADING_STEPS[1].duration);
@@ -192,7 +175,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setLoadingStep(3);
             await sleep(LOADING_STEPS[3].duration);
             
-            // Loading complete - show results immediately
+            // Loading complete - stop VFX and show results immediately
+            setIsGlitching(false);
+            setIsFileGlitching(false);
+            setGlitchedText("");
             setIsLoading(false);
             setLoadingStep(0);
 
@@ -205,8 +191,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setIsShaking(true);
             setTimeout(() => setIsShaking(false), 2000);
             // Reset animation states on error
-            setShowInputArea(true);
-            setIsCollapsing(false);
             setIsGlitching(false);
             setIsFileGlitching(false);
             setGlitchedText("");
@@ -231,8 +215,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const resetToCreateNew = () => {
         setResultLinks([]);
         setCopiedIndex(null);
-        setShowInputArea(true);
-        setIsCollapsing(false);
         setIsGlitching(false);
         setIsFileGlitching(false);
         setGlitchedText("");
@@ -325,152 +307,133 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 </>
             ) : (
                 <div className="space-y-6">
-                    <AnimatePresence mode="wait">
-                        {showInputArea && (
-                            <motion.div
-                                key="input-area"
-                                initial={{ scale: 1, opacity: 1 }}
-                                animate={{ 
-                                    scale: isCollapsing ? 0 : 1, 
-                                    opacity: isCollapsing ? 0 : 1,
-                                }}
-                                exit={{ scale: 0, opacity: 0 }}
-                                transition={{ 
-                                    duration: 0.4, 
-                                    ease: [0.4, 0, 0.2, 1]
-                                }}
-                                className="relative group origin-center"
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                            >
-                                <div className={cn(
-                                    "absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 transition duration-500",
-                                    isDragging ? "opacity-60 bg-zinc-700" : "group-hover:opacity-40"
-                                )}></div>
+                    <div
+                        className="relative group origin-center"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <div className={cn(
+                            "absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 transition duration-500",
+                            isDragging ? "opacity-60 bg-zinc-700" : "group-hover:opacity-40"
+                        )}></div>
 
-                                <div className="relative">
-                                    {secretType === SecretTypes.FILE && selectedFile ? (
-                                        // File Preview with Glitch Effect
-                                        <motion.div 
-                                            animate={{ 
-                                                scale: isCollapsing ? 0.8 : 1,
-                                            }}
-                                            transition={{ duration: 0.3 }}
-                                            className={cn(
-                                                "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
-                                                "border-zinc-800",
-                                                isFileGlitching && "border-green-500/50"
+                        <div className="relative">
+                            {secretType === SecretTypes.FILE && selectedFile ? (
+                                // File Preview with Glitch Effect
+                                <div
+                                    className={cn(
+                                        "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
+                                        "border-zinc-800",
+                                        isFileGlitching && "border-green-500/50"
                                             )}
-                                        >
-                                            {isFileGlitching ? (
-                                                // File glitch animation
-                                                <>
-                                                    <motion.div 
-                                                        className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center"
-                                                        animate={{ 
-                                                            rotate: [0, 5, -5, 5, -5, 0],
-                                                            scale: [1, 1.1, 0.9, 1.1, 0.9, 1]
-                                                        }}
-                                                        transition={{ duration: 0.3, repeat: Infinity }}
-                                                    >
-                                                        <Lock className="w-6 h-6 text-green-400" />
-                                                    </motion.div>
-                                                    <motion.div 
-                                                        className="text-center"
-                                                        animate={{ 
-                                                            opacity: [1, 0.5, 1, 0.3, 1],
-                                                            x: [0, -2, 2, -2, 0]
-                                                        }}
-                                                        transition={{ duration: 0.2, repeat: Infinity }}
-                                                    >
-                                                        <p className="text-sm font-mono text-green-400 tracking-wider">
-                                                            ENCRYPTING...
-                                                        </p>
-                                                        <p className="text-xs text-green-400/50 mt-1 font-mono">
-                                                            {fileGlitchCode}
-                                                        </p>
-                                                    </motion.div>
-                                                </>
-                                            ) : (
-                                                // Normal file preview
-                                                <>
-                                                    <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                                        {(() => {
-                                                            const Icon = getFileIcon(selectedFile.type);
-                                                            return <Icon className="w-6 h-6 text-zinc-400" />;
-                                                        })()}
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
-                                                        <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                                    </div>
-                                                    <button
-                                                        onClick={clearFile}
-                                                        className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </button>
-                                                </>
-                                            )}
-                                        </motion.div>
-                                    ) : (
-                                        // Text Input with Glitch Effect
+                                >
+                                    {isFileGlitching ? (
+                                        // File glitch animation
                                         <>
-                                            {isGlitching ? (
-                                                <div
-                                                    className={cn(
-                                                        "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border border-zinc-800 text-base font-mono leading-relaxed shadow-sm overflow-hidden select-none",
-                                                    )}
-                                                >
-                                                    <motion.pre 
-                                                        className="whitespace-pre-wrap break-words text-green-400 font-mono"
-                                                        animate={{ 
-                                                            textShadow: [
-                                                                "0 0 5px rgba(34, 197, 94, 0.5)",
-                                                                "0 0 20px rgba(34, 197, 94, 0.8)",
-                                                                "0 0 5px rgba(34, 197, 94, 0.5)"
-                                                            ]
-                                                        }}
-                                                        transition={{ duration: 0.1, repeat: Infinity }}
-                                                    >
-                                                        {glitchedText}
-                                                    </motion.pre>
-                                                </div>
-                                            ) : (
-                                                <textarea
-                                                    value={content}
-                                                    onChange={(e) => setContent(e.target.value)}
-                                                    placeholder={customPlaceholder}
-                                                    className={cn(
-                                                        "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
-                                                        isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
-                                                        isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
-                                                    )}
-                                                    spellCheck={false}
-                                                />
-                                            )}
-                                            {isDragging && (
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                    <p className="text-zinc-400 font-medium">Drop to upload</p>
-                                                </div>
-                                            )}
-                                            {!content && !isDragging && !isGlitching && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                    className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
-                                                    title={`Attach File (Max ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB)`}
-                                                >
-                                                    <Upload className="w-4.5 h-4.5" />
-                                                </button>
-                                            )}
+                                            <motion.div 
+                                                className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center"
+                                                animate={{ 
+                                                    rotate: [0, 5, -5, 5, -5, 0],
+                                                    scale: [1, 1.1, 0.9, 1.1, 0.9, 1]
+                                                }}
+                                                transition={{ duration: 0.3, repeat: Infinity }}
+                                            >
+                                                <Lock className="w-6 h-6 text-green-400" />
+                                            </motion.div>
+                                            <motion.div 
+                                                className="text-center"
+                                                animate={{ 
+                                                    opacity: [1, 0.5, 1, 0.3, 1],
+                                                    x: [0, -2, 2, -2, 0]
+                                                }}
+                                                transition={{ duration: 0.2, repeat: Infinity }}
+                                            >
+                                                <p className="text-sm font-mono text-green-400 tracking-wider">
+                                                    ENCRYPTING...
+                                                </p>
+                                                <p className="text-xs text-green-400/50 mt-1 font-mono">
+                                                    {fileGlitchCode}
+                                                </p>
+                                            </motion.div>
+                                        </>
+                                    ) : (
+                                        // Normal file preview
+                                        <>
+                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                {(() => {
+                                                    const Icon = getFileIcon(selectedFile.type);
+                                                    return <Icon className="w-6 h-6 text-zinc-400" />;
+                                                })()}
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
+                                                <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                                            </div>
+                                            <button
+                                                onClick={clearFile}
+                                                className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
                                         </>
                                     )}
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            ) : (
+                                // Text Input with Glitch Effect
+                                <>
+                                    {isGlitching ? (
+                                        <div
+                                            className={cn(
+                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border border-zinc-800 text-base font-mono leading-relaxed shadow-sm overflow-hidden select-none",
+                                            )}
+                                        >
+                                            <motion.pre 
+                                                className="whitespace-pre-wrap break-words text-green-400 font-mono"
+                                                animate={{ 
+                                                    textShadow: [
+                                                        "0 0 5px rgba(34, 197, 94, 0.5)",
+                                                        "0 0 20px rgba(34, 197, 94, 0.8)",
+                                                        "0 0 5px rgba(34, 197, 94, 0.5)"
+                                                    ]
+                                                }}
+                                                transition={{ duration: 0.1, repeat: Infinity }}
+                                            >
+                                                {glitchedText}
+                                            </motion.pre>
+                                        </div>
+                                    ) : (
+                                        <textarea
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            placeholder={customPlaceholder}
+                                            className={cn(
+                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
+                                                isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
+                                                isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
+                                            )}
+                                            spellCheck={false}
+                                        />
+                                    )}
+                                    {isDragging && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <p className="text-zinc-400 font-medium">Drop to upload</p>
+                                        </div>
+                                    )}
+                                    {!content && !isDragging && !isGlitching && (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
+                                            title={`Attach File (Max ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB)`}
+                                        >
+                                            <Upload className="w-4.5 h-4.5" />
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Controls */}
                     <div className="flex gap-4 select-none">
