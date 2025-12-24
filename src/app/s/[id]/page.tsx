@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor } from "lucide-react";
+import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor, Trash2 } from "lucide-react";
 import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
@@ -181,21 +181,18 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                         </motion.div>
                                     ) : (
                                         <motion.div 
-                                            key="server-burning"
-                                            className="w-16 h-16 md:w-20 md:h-20 bg-zinc-900 rounded-full flex items-center justify-center relative"
-                                            initial={{ scale: 1, opacity: 1 }}
-                                            animate={{ 
-                                                scale: [1, 1.1, 0.9, 0],
-                                                opacity: [1, 0.8, 0.4, 0],
-                                            }}
-                                            transition={{ duration: 0.6, ease: "easeOut" }}
+                                            key="server-deleted"
+                                            className="w-16 h-16 md:w-20 md:h-20 bg-zinc-800/50 rounded-full flex items-center justify-center relative border border-zinc-700"
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ duration: 0.3, ease: "easeOut" }}
                                         >
-                                            <Server className="w-8 h-8 md:w-10 md:h-10 text-zinc-400" />
+                                            <Trash2 className="w-8 h-8 md:w-10 md:h-10 text-zinc-500" />
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
                                 <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                                    {isBurning ? "Deleted" : "Server"}
+                                    Server
                                 </span>
                             </div>
                             

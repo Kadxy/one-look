@@ -45,7 +45,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const [glitchedText, setGlitchedText] = useState("");
     const [isGlitching, setIsGlitching] = useState(false);
     const [isFileGlitching, setIsFileGlitching] = useState(false);
-    const [fileGlitchCode, setFileGlitchCode] = useState("");
 
     useEffect(() => {
         setInresult(resultLinks.length > 0)
@@ -159,7 +158,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                 const originalContent = content;
                 glitchText(originalContent, setGlitchedText, 1500);
             } else if (secretType === SecretTypes.FILE) {
-                setFileGlitchCode(Math.random().toString(36).substring(2, 10).toUpperCase());
                 setIsFileGlitching(true);
             }
 
@@ -320,42 +318,24 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
                         <div className="relative">
                             {secretType === SecretTypes.FILE && selectedFile ? (
-                                // File Preview with Glitch Effect
+                                // File Preview
                                 <div
                                     className={cn(
                                         "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
-                                        "border-zinc-800",
-                                        isFileGlitching && "border-green-500/50"
-                                            )}
+                                        "border-zinc-800"
+                                    )}
                                 >
                                     {isFileGlitching ? (
-                                        // File glitch animation
+                                        // Simple loading indicator during encryption
                                         <>
-                                            <motion.div 
-                                                className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center"
-                                                animate={{ 
-                                                    rotate: [0, 5, -5, 5, -5, 0],
-                                                    scale: [1, 1.1, 0.9, 1.1, 0.9, 1]
-                                                }}
-                                                transition={{ duration: 0.3, repeat: Infinity }}
-                                            >
-                                                <Lock className="w-6 h-6 text-green-400" />
-                                            </motion.div>
-                                            <motion.div 
-                                                className="text-center"
-                                                animate={{ 
-                                                    opacity: [1, 0.5, 1, 0.3, 1],
-                                                    x: [0, -2, 2, -2, 0]
-                                                }}
-                                                transition={{ duration: 0.2, repeat: Infinity }}
-                                            >
-                                                <p className="text-sm font-mono text-green-400 tracking-wider">
-                                                    ENCRYPTING...
+                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
+                                                <Lock className="w-6 h-6 text-zinc-400 animate-pulse" />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium text-zinc-400">
+                                                    Encrypting...
                                                 </p>
-                                                <p className="text-xs text-green-400/50 mt-1 font-mono">
-                                                    {fileGlitchCode}
-                                                </p>
-                                            </motion.div>
+                                            </div>
                                         </>
                                     ) : (
                                         // Normal file preview
