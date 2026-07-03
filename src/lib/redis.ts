@@ -12,7 +12,10 @@ const globalForRedis = globalThis as unknown as {
     redis: Redis | undefined;
 };
 
-export const redis = globalForRedis.redis ?? new Redis(getRedisUrl());
+// lazyConnect: don't connect at module load time — `next build` imports API
+// route modules, and a real Redis is not available during image build.
+// The connection is established automatically on the first command.
+export const redis = globalForRedis.redis ?? new Redis(getRedisUrl(), { lazyConnect: true });
 
 if (process.env.NODE_ENV !== 'production') {
     globalForRedis.redis = redis;

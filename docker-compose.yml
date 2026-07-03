@@ -1,0 +1,34 @@
+services:
+  app:
+    build:
+      context: .
+      # NEXT_PUBLIC_* is baked in at build time, change it here (not in environment)
+      args:
+        NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB: 3
+    restart: unless-stopped
+    ports:
+      # Bind to localhost only — expose via your reverse proxy (Caddy/Nginx).
+      # Change to "3000:3000" if you really want it directly reachable.
+      - "127.0.0.1:3000:3000"
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # --save "" --appendonly no : pure in-memory, secrets never touch disk.
+    #   Trade-off: a redis restart wipes unread secrets (links die gracefully
+    #   with "not found"). Swap to --appendonly yes + a volume if you prefer
+    #   secrets to survive restarts.
+    # maxmemory + volatile-ttl : hard memory cap; all keys carry a TTL, so the
+    #   ones closest to expiry get evicted first if the cap is ever hit.
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy volatile-ttl
+    # No ports exposed — only reachable by `app` on the internal network.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

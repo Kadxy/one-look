@@ -42,6 +42,33 @@ Once a secret is retrieved, it is **atomically deleted** from the database. One 
 
 ## Deploy Your Own
 
+### Option 1: Docker Compose (self-hosted, recommended)
+
+Ships with a bundled Redis — no external services needed.
+
+```bash
+git clone https://github.com/Kadxy/one-look.git
+cd one-look
+docker compose up -d --build
+```
+
+The app listens on `127.0.0.1:3000`. Put a reverse proxy with TLS in front of it — **HTTPS is required** (encryption uses `window.crypto.subtle`, which browsers only expose in secure contexts). Example with [Caddy](https://caddyserver.com/):
+
+```
+your-domain.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+If you use Nginx instead, set `client_max_body_size 10m;` (encrypted file payloads are ~2x the raw file size).
+
+Notes:
+
+- Redis runs in-memory only (`--save "" --appendonly no`): secrets never touch disk, but unread secrets are lost if Redis restarts. Prefer durability? Change the redis `command` in `docker-compose.yml` to use `--appendonly yes` and mount a volume.
+- `NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB` is baked in at **build time**. To change it, edit `build.args` in `docker-compose.yml` and run `docker compose up -d --build`.
+
+### Option 2: Vercel
+
 You can deploy your own instance of One-Look in seconds. You only need a Redis instance (e.g., from [Upstash](https://upstash.com/)).
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FKadxy%2Fone-look&env=REDIS_URL&project-name=one-look&repository-name=one-look)
