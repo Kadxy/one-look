@@ -54,7 +54,7 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
 
     return (
         <div className={cn(
-            "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 ease-out select-none",
+            "fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ease-out select-none",
             isVisible ? "opacity-100 backdrop-blur-md bg-black/60" : "opacity-0 backdrop-blur-none bg-black/0"
         )}>
             <div
@@ -63,7 +63,7 @@ export default function HowItWorks({ isOpen, onClose }: { isOpen: boolean; onClo
             />
 
             <div className={cn(
-                "relative w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-3xl p-8 shadow-2xl transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) transform overflow-hidden",
+                "relative w-full max-w-2xl bg-[#09090b] border border-zinc-800 rounded-3xl p-8 shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] transform overflow-hidden",
                 isVisible ? "scale-100 translate-y-0 opacity-100" : "scale-95 translate-y-8 opacity-0"
             )}>
                 {/* Decorative background glow */}

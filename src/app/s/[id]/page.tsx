@@ -8,7 +8,7 @@ import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } fr
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 interface DecryptedFile {
     fileName: string;
@@ -18,8 +18,11 @@ interface DecryptedFile {
 
 // Animation constants
 const DATA_TRANSFER_PARTICLE_COUNT = 5;
+const TRANSFER_MINIMUM_MS = 650;
+const BURN_REVEAL_MS = 300;
 
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
+    const shouldReduceMotion = useReducedMotion();
     const { id } = use(params);
 
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -65,8 +68,11 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
         }
 
         setStatus("loading");
-        
+        setIsTransferring(true);
+        setIsBurning(false);
+
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        const sequenceStartedAt = Date.now();
 
         try {
             const res = await fetch("/api/burn", {
@@ -98,16 +104,15 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                     setSecretContent(_secretContent);
                 }
 
-                // Start the data transfer animation sequence
-                setIsTransferring(true);
-                await sleep(1000); // Wait for transfer animation (slower)
-                
-                // Start burning the cloud icon
+                // The transfer animation starts with the request, so network and
+                // visual time overlap instead of running one after the other.
+                const transferMinimum = shouldReduceMotion ? 0 : TRANSFER_MINIMUM_MS;
+                const transferElapsed = Date.now() - sequenceStartedAt;
+                await sleep(Math.max(0, transferMinimum - transferElapsed));
+
                 setIsBurning(true);
-                await sleep(800); // Wait for burn animation to play
-                
-                await sleep(200); // Small pause
-                
+                await sleep(shouldReduceMotion ? 0 : BURN_REVEAL_MS);
+
                 setStatus("success");
             } catch (decryptionError) {
                 console.error("Decryption failed:", decryptionError);
@@ -116,6 +121,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
         } catch (err: unknown) {
             console.error(err);
+            setIsTransferring(false);
+            setIsBurning(false);
             setStatus("error");
             setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred.");
         }
@@ -213,8 +220,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                                         scale: [0.5, 1, 1, 0.5]
                                                     }}
                                                     transition={{
-                                                        duration: 0.8,
-                                                        delay: i * 0.15,
+                                                        duration: 0.45,
+                                                        delay: i * 0.05,
                                                         repeat: Infinity,
                                                         ease: "easeInOut"
                                                     }}
@@ -259,8 +266,12 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                                 <input
                                     value={inputKey}
                                     onChange={(e) => setInputKey(e.target.value)}
-                                    placeholder="Paste decryption key"
-                                    className="w-full p-4 bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-zinc-600 transition-all text-center font-mono placeholder:text-zinc-600"
+                                    placeholder="Decryption key"
+                                    aria-label="Decryption key"
+                                    autoComplete="off"
+                                    autoCapitalize="none"
+                                    spellCheck={false}
+                                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 text-center font-mono text-zinc-200 outline-none transition-all placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-4 focus:ring-zinc-500/10"
                                 />
                             </div>
                         )}
@@ -271,7 +282,10 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             disabled={status === 'loading' || (!urlKey && !inputKey.trim())}
                         >
                             {status === 'loading' ? (
-                                <><Loader2 className="animate-spin w-5 h-5" /> <span>Decrypting...</span></>
+                                <>
+                                    <Loader2 className="animate-spin w-5 h-5" />
+                                    <span>{isBurning ? "Erasing server copy..." : "Transferring ciphertext..."}</span>
+                                </>
                             ) : (
                                 "Reveal Secret"
                             )}
@@ -288,8 +302,8 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             transition={{ 
                                 type: "spring",
-                                stiffness: 300,
-                                damping: 25
+                                stiffness: 420,
+                                damping: 32
                             }}
                         >
                             <div className="p-6 md:p-8 space-y-6">
@@ -361,17 +375,20 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.5 }}
+                            transition={{
+                                delay: shouldReduceMotion ? 0 : 0.08,
+                                duration: shouldReduceMotion ? 0 : 0.2,
+                            }}
                             className="mt-6"
                         >
                             <Link
                                 href="/"
-                                className="block w-full py-4 text-center text-zinc-500 hover:text-zinc-300 bg-zinc-900/20 hover:bg-zinc-900/50 rounded-xl transition-colors cursor-pointer group select-none border border-zinc-800/50 hover:border-zinc-800"
+                                className="group block w-full rounded-xl border border-zinc-700/80 bg-zinc-900/60 px-4 py-3.5 text-center text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-800/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/50 active:scale-[0.99] cursor-pointer select-none"
                             >
                                 <span className="flex items-center justify-center gap-2 text-sm font-medium">
-                                    <ShieldPlus className="w-4 h-4" />
+                                    <ShieldPlus className="w-4 h-4 text-zinc-400 transition-colors group-hover:text-zinc-200" />
                                     <span>Secure another secret</span>
-                                    <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                    <ArrowRight className="w-4 h-4 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
                                 </span>
                             </Link>
                         </motion.div>

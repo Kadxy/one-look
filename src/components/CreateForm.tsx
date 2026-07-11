@@ -7,23 +7,103 @@ import {
     Lock, CloudUpload, Key, ShieldCheck,
     FileText, X, Image as ImageIcon, Video, Music, ArrowRight
 } from "lucide-react";
-import { cn, copyToClipboard as copyText, getShareLink, glitchText } from "@/lib/utils";
+import { cn, copyToClipboard as copyText, getShareLink } from "@/lib/utils";
 import { TTL_OPTIONS, SecretTypes, MAX_FILE_SIZE } from "@/lib/constants";
 import { VaultRequestPayload } from "@/app/api/vault/route";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
+// These are minimum display times, not extra waits after the request finishes.
+// Fast requests keep a short cinematic sequence; slow requests naturally spend
+// their time on the "Storing ciphertext" step instead of paying both costs.
 const LOADING_STEPS = [
-    { icon: Key, text: "Forging keys...", duration: 500 },
-    { icon: Lock, text: "Encrypting locally...", duration: 500 },
-    { icon: CloudUpload, text: "Storing ciphertext...", duration: 500 },
-    { icon: ShieldCheck, text: "Ready.", duration: 300 },
+    { icon: Key, text: "Forging keys...", duration: 200 },
+    { icon: Lock, text: "Encrypting locally...", duration: 240 },
+    { icon: CloudUpload, text: "Storing ciphertext...", duration: 180 },
+    { icon: ShieldCheck, text: "Ready.", duration: 160 },
 ];
 
+const CIPHER_PHASES = ["KEY MATERIAL", "LOCAL CIPHER", "UPLOAD BUFFER", "SEALED"];
+const CIPHER_ROW_COUNT = 3;
+const CIPHER_BYTES_PER_ROW = 12;
+
+interface SelectedFile {
+    name: string;
+    size: number;
+    type: string;
+}
+
+function createCipherRows(): string[][] {
+    const bytes = new Uint8Array(CIPHER_ROW_COUNT * CIPHER_BYTES_PER_ROW);
+    window.crypto.getRandomValues(bytes);
+
+    return Array.from({ length: CIPHER_ROW_COUNT }, (_, rowIndex) => {
+        const start = rowIndex * CIPHER_BYTES_PER_ROW;
+        return Array.from(bytes.slice(start, start + CIPHER_BYTES_PER_ROW), byte =>
+            byte.toString(16).padStart(2, "0").toUpperCase()
+        );
+    });
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function CipherStream({ phase }: { phase: number }) {
+    const [rows] = useState(createCipherRows);
+
+    return (
+        <div
+            className="relative w-full h-40 overflow-hidden rounded-2xl border border-zinc-800 bg-black shadow-sm select-none"
+            aria-hidden="true"
+        >
+            <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between font-mono text-[9px] tracking-[0.2em] text-zinc-600">
+                <span>{CIPHER_PHASES[phase]}</span>
+                <span>AES-256-GCM</span>
+            </div>
+
+            <div className="absolute inset-x-0 top-9 bottom-3 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
+                <div className="flex h-full flex-col justify-center gap-2">
+                    {rows.map((row, rowIndex) => (
+                        <motion.div
+                            key={rowIndex}
+                            className="flex w-full justify-between px-4 font-mono text-[10px]"
+                            animate={{ opacity: [0.48, 0.72, 0.48] }}
+                            transition={{
+                                duration: 1.1,
+                                delay: rowIndex * 0.12,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                            }}
+                        >
+                            {row.map((byte, byteIndex) => (
+                                <span
+                                    key={`${rowIndex}-${byteIndex}`}
+                                    className="flex h-5 w-6 sm:w-7 items-center justify-center rounded border border-green-500/[0.08] bg-green-500/[0.025] text-green-300/55"
+                                >
+                                    {byte}
+                                </span>
+                            ))}
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+
+            <motion.div
+                className="absolute inset-x-4 top-9 h-px bg-gradient-to-r from-transparent via-green-400/50 to-transparent shadow-[0_0_8px_rgba(74,222,128,0.22)]"
+                animate={{ y: [0, 88, 0], opacity: [0, 0.65, 0] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+            />
+        </div>
+    );
+}
+
 export default function CreateForm({ setInresult }: { setInresult: (inResult: boolean) => void }) {
+    const shouldReduceMotion = useReducedMotion();
     const [content, setContent] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
 
-    const [selectedFile, setSelectedFile] = useState<{ name: string, size: number, type: string } | null>(null);
+    const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isTtlOpen, setIsTtlOpen] = useState(false);
@@ -42,9 +122,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     
     // Animation states for VFX
-    const [glitchedText, setGlitchedText] = useState("");
-    const [isGlitching, setIsGlitching] = useState(false);
-    const [isFileGlitching, setIsFileGlitching] = useState(false);
+    const [isTextEncrypting, setIsTextEncrypting] = useState(false);
+    const [isFileEncrypting, setIsFileEncrypting] = useState(false);
 
     useEffect(() => {
         setInresult(resultLinks.length > 0)
@@ -82,7 +161,11 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
             setContent(packedContent);
             setSecretType(SecretTypes.FILE);
-            setSelectedFile({ name: file.name, size: file.size, type: file.type });
+            setSelectedFile({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+            });
         };
         reader.readAsDataURL(file);
     }
@@ -127,6 +210,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
         setResultLinks([]);
 
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        const stepDuration = (index: number) => shouldReduceMotion ? 0 : LOADING_STEPS[index].duration;
 
         try {
             // Start encryption API in background
@@ -153,30 +237,27 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             })();
 
             // Start VFX immediately while button is loading (visual feedback only)
-            if (secretType === SecretTypes.TEXT && content.length > 0) {
-                setIsGlitching(true);
-                const originalContent = content;
-                glitchText(originalContent, setGlitchedText, 1500);
-            } else if (secretType === SecretTypes.FILE) {
-                setIsFileGlitching(true);
+            if (!shouldReduceMotion && secretType === SecretTypes.TEXT && content.length > 0) {
+                setIsTextEncrypting(true);
+            } else if (!shouldReduceMotion && secretType === SecretTypes.FILE) {
+                setIsFileEncrypting(true);
             }
 
             // Run loading steps while API runs in background
-            await sleep(LOADING_STEPS[0].duration);
+            await sleep(stepDuration(0));
             setLoadingStep(1);
-            await sleep(LOADING_STEPS[1].duration);
+            await sleep(stepDuration(1));
             setLoadingStep(2);
-            const uploadStart = Date.now();
+            const uploadStepStartedAt = Date.now();
             const results = await apiPromise;
-            const uploadElapsed = Date.now() - uploadStart;
-            await sleep(Math.max(0, LOADING_STEPS[2].duration - uploadElapsed));
+            const uploadStepElapsed = Date.now() - uploadStepStartedAt;
+            await sleep(Math.max(0, stepDuration(2) - uploadStepElapsed));
             setLoadingStep(3);
-            await sleep(LOADING_STEPS[3].duration);
+            await sleep(stepDuration(3));
             
             // Loading complete - stop VFX and show results immediately
-            setIsGlitching(false);
-            setIsFileGlitching(false);
-            setGlitchedText("");
+            setIsTextEncrypting(false);
+            setIsFileEncrypting(false);
             setIsLoading(false);
             setLoadingStep(0);
 
@@ -189,9 +270,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             setIsShaking(true);
             setTimeout(() => setIsShaking(false), 2000);
             // Reset animation states on error
-            setIsGlitching(false);
-            setIsFileGlitching(false);
-            setGlitchedText("");
+            setIsTextEncrypting(false);
+            setIsFileEncrypting(false);
             setIsLoading(false);
             setLoadingStep(0);
         }
@@ -213,9 +293,8 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const resetToCreateNew = () => {
         setResultLinks([]);
         setCopiedIndex(null);
-        setIsGlitching(false);
-        setIsFileGlitching(false);
-        setGlitchedText("");
+        setIsTextEncrypting(false);
+        setIsFileEncrypting(false);
     };
 
     return (
@@ -225,13 +304,12 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
             {resultLinks.length > 0 ? (
                 <>
                     <motion.div 
-                        initial={{ scale: 0.5, opacity: 0 }}
+                        initial={{ scale: 0.92, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ 
                             type: "spring", 
-                            stiffness: 300, 
-                            damping: 20,
-                            duration: 0.5 
+                            stiffness: 420,
+                            damping: 32
                         }}
                         className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden"
                     >
@@ -316,79 +394,54 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                             isDragging ? "opacity-60 bg-zinc-700" : "group-hover:opacity-40"
                         )}></div>
 
-                        <div className="relative">
+                        <div className="relative h-40">
                             {secretType === SecretTypes.FILE && selectedFile ? (
-                                // File Preview
-                                <div
-                                    className={cn(
-                                        "relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all select-none",
-                                        "border-zinc-800"
-                                    )}
-                                >
-                                    {isFileGlitching ? (
-                                        // Simple loading indicator during encryption
-                                        <>
-                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                                <Lock className="w-6 h-6 text-zinc-400 animate-pulse" />
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-sm font-medium text-zinc-400">
-                                                    Encrypting...
-                                                </p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        // Normal file preview
-                                        <>
-                                            <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center">
-                                                {(() => {
+                                <div className="relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border border-zinc-800 flex items-center transition-all select-none">
+                                    <div className="flex w-full items-center gap-3 px-2">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/70">
+                                            {isFileEncrypting ? (
+                                                <Lock className="w-5 h-5 text-zinc-400 animate-pulse" />
+                                            ) : (
+                                                (() => {
                                                     const Icon = getFileIcon(selectedFile.type);
-                                                    return <Icon className="w-6 h-6 text-zinc-400" />;
-                                                })()}
-                                            </div>
-                                            <div className="text-center">
-                                                <p className="text-sm font-medium text-zinc-200 truncate max-w-[200px]">{selectedFile.name}</p>
-                                                <p className="text-xs text-zinc-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                                            </div>
+                                                    return <Icon className="w-5 h-5 text-zinc-400" />;
+                                                })()
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1 text-left">
+                                            <p className="truncate text-sm font-medium text-zinc-200">
+                                                {isFileEncrypting ? "Encrypting file..." : selectedFile.name}
+                                            </p>
+                                            <p className="mt-0.5 truncate text-xs text-zinc-500">
+                                                {isFileEncrypting ? selectedFile.name : formatFileSize(selectedFile.size)}
+                                            </p>
+                                        </div>
+
+                                        {!isFileEncrypting && (
                                             <button
                                                 onClick={clearFile}
-                                                className="absolute top-3 right-3 p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-full transition-all cursor-pointer"
+                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-900 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600/50 cursor-pointer"
+                                                aria-label="Remove selected file"
+                                                title="Remove file"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
-                                        </>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
-                                // Text Input with Glitch Effect
+                                // Fixed cipher stream: independent of plaintext length and language.
                                 <>
-                                    {isGlitching ? (
-                                        <div
-                                            className={cn(
-                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border border-zinc-800 text-base font-mono leading-relaxed shadow-sm overflow-hidden select-none",
-                                            )}
-                                        >
-                                            <motion.pre 
-                                                className="whitespace-pre-wrap break-words text-green-400 font-mono"
-                                                animate={{ 
-                                                    textShadow: [
-                                                        "0 0 5px rgba(34, 197, 94, 0.5)",
-                                                        "0 0 20px rgba(34, 197, 94, 0.8)",
-                                                        "0 0 5px rgba(34, 197, 94, 0.5)"
-                                                    ]
-                                                }}
-                                                transition={{ duration: 0.1, repeat: Infinity }}
-                                            >
-                                                {glitchedText}
-                                            </motion.pre>
-                                        </div>
+                                    {isTextEncrypting ? (
+                                        <CipherStream phase={loadingStep} />
                                     ) : (
                                         <textarea
                                             value={content}
                                             onChange={(e) => setContent(e.target.value)}
                                             placeholder={customPlaceholder}
                                             className={cn(
-                                                "relative w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
+                                                "relative block w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
                                                 isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
                                                 isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
                                             )}
@@ -400,7 +453,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                             <p className="text-zinc-400 font-medium">Drop to upload</p>
                                         </div>
                                     )}
-                                    {!content && !isDragging && !isGlitching && (
+                                    {!content && !isDragging && !isTextEncrypting && (
                                         <button
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
