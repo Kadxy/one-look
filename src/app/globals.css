@@ -69,6 +69,19 @@
     select {
         -webkit-tap-highlight-color: transparent;
     }
+
+    /*
+     * iOS WebKit (including Chrome) zooms the viewport when a focused form
+     * control has a computed font size below 16px. Keep page zoom available
+     * for accessibility and prevent only the automatic focus zoom.
+    */
+    @supports (-webkit-touch-callout: none) {
+        input,
+        textarea,
+        select {
+            font-size: 16px !important;
+        }
+    }
 }
 
 .site-header {
