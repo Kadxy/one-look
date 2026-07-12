@@ -1,14 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useState, use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+    ArrowRight,
+    Check,
+    Copy,
+    Download,
+    EyeOff,
+    FileText,
+    Image as ImageIcon,
+    Loader2,
+    LockOpen,
+    Music,
+    ShieldPlus,
+    Video,
+} from "lucide-react";
 import { decryptData } from "@/lib/crypto";
-import { Loader2, EyeOff, Copy, Download, Check, LockOpen, FileText, Image as ImageIcon, Video, Music, ShieldPlus, ArrowRight, Server, Monitor, Trash2 } from "lucide-react";
-import { copyToClipboard as copyText, downloadTextFile, triggerDownload, cn } from "@/lib/utils";
+import { copyToClipboard as copyText, downloadTextFile, triggerDownload } from "@/lib/utils";
 import { BurnResponse } from "@/app/api/burn/route";
 import { SecretTypes } from "@/lib/constants";
-import Image from "next/image";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { PageBackdrop, SiteHeader } from "@/components/SiteChrome";
 
 interface DecryptedFile {
     fileName: string;
@@ -16,10 +29,7 @@ interface DecryptedFile {
     fileData: string;
 }
 
-// Animation constants
-const DATA_TRANSFER_PARTICLE_COUNT = 5;
-const TRANSFER_MINIMUM_MS = 650;
-const BURN_REVEAL_MS = 300;
+const REVEAL_MINIMUM_MS = 320;
 
 export default function ViewSecretPage({ params }: { params: Promise<{ id: string }> }) {
     const shouldReduceMotion = useReducedMotion();
@@ -27,33 +37,25 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [errorMsg, setErrorMsg] = useState("");
-
     const [secretContent, setSecretContent] = useState("");
     const [secretFile, setSecretFile] = useState<DecryptedFile | null>(null);
-
     const [isCopied, setIsCopied] = useState(false);
     const [inputKey, setInputKey] = useState("");
     const [urlKey, setUrlKey] = useState("");
     const [secretType, setSecretType] = useState<SecretTypes>(SecretTypes.TEXT);
     const [isHashChecked, setIsHashChecked] = useState(false);
-    
-    // Animation states for VFX
-    const [isTransferring, setIsTransferring] = useState(false);
-    const [isBurning, setIsBurning] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            if (window.location.hash) {
-                setUrlKey(window.location.hash.substring(1));
-            }
-            setIsHashChecked(true);
+        if (window.location.hash) {
+            setUrlKey(window.location.hash.substring(1));
         }
+        setIsHashChecked(true);
     }, []);
 
     const getFileIcon = (mimeType: string) => {
-        if (mimeType.startsWith('image/')) return ImageIcon;
-        if (mimeType.startsWith('video/')) return Video;
-        if (mimeType.startsWith('audio/')) return Music;
+        if (mimeType.startsWith("image/")) return ImageIcon;
+        if (mimeType.startsWith("video/")) return Video;
+        if (mimeType.startsWith("audio/")) return Music;
         return FileText;
     };
 
@@ -63,76 +65,54 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
         if (!key) {
             setStatus("error");
-            setErrorMsg("Decryption key missing.");
+            setErrorMsg("A decryption key is required.");
             return;
         }
 
         setStatus("loading");
-        setIsTransferring(true);
-        setIsBurning(false);
-
-        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-        const sequenceStartedAt = Date.now();
+        const startedAt = Date.now();
 
         try {
-            const res = await fetch("/api/burn", {
+            const response = await fetch("/api/burn", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id }),
             });
 
-            if (res.status === 404) {
-                throw new Error("Secret vanished.");
+            if (response.status === 404) throw new Error("This secret has already been opened or has expired.");
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || "Unable to retrieve this secret.");
             }
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || "Server error.");
+            const payload = await response.json() as BurnResponse;
+            const decryptedContent = await decryptData(payload.data, payload.iv, key);
+            if (!decryptedContent) throw new Error("The decrypted secret was empty.");
+
+            setSecretType(payload.secretType);
+            if (payload.secretType === SecretTypes.FILE) {
+                setSecretFile(JSON.parse(decryptedContent) as DecryptedFile);
+            } else {
+                setSecretContent(decryptedContent);
             }
 
-            const response = await res.json() as BurnResponse;
-            setSecretType(response.secretType);
-
-            try {
-                const _secretContent = await decryptData(response.data, response.iv, key);
-                if (!_secretContent) throw new Error("Empty result");
-
-                if (response.secretType === SecretTypes.FILE) {
-                    const parsedFile = JSON.parse(_secretContent) as DecryptedFile;
-                    setSecretFile(parsedFile);
-                } else {
-                    setSecretContent(_secretContent);
-                }
-
-                // The transfer animation starts with the request, so network and
-                // visual time overlap instead of running one after the other.
-                const transferMinimum = shouldReduceMotion ? 0 : TRANSFER_MINIMUM_MS;
-                const transferElapsed = Date.now() - sequenceStartedAt;
-                await sleep(Math.max(0, transferMinimum - transferElapsed));
-
-                setIsBurning(true);
-                await sleep(shouldReduceMotion ? 0 : BURN_REVEAL_MS);
-
-                setStatus("success");
-            } catch (decryptionError) {
-                console.error("Decryption failed:", decryptionError);
-                throw new Error("Invalid key. Unable to decrypt.");
+            if (!shouldReduceMotion) {
+                const remaining = Math.max(0, REVEAL_MINIMUM_MS - (Date.now() - startedAt));
+                await new Promise((resolve) => setTimeout(resolve, remaining));
             }
-
-        } catch (err: unknown) {
-            console.error(err);
-            setIsTransferring(false);
-            setIsBurning(false);
+            setStatus("success");
+        } catch (error: unknown) {
+            console.error(error);
             setStatus("error");
-            setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred.");
+            setErrorMsg(error instanceof Error ? error.message : "Unable to open this secret.");
         }
     };
 
     const copyContent = () => {
         copyText(secretContent);
         setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-    }
+        window.setTimeout(() => setIsCopied(false), 2000);
+    };
 
     const downloadContent = () => {
         if (secretType === SecretTypes.FILE && secretFile) {
@@ -140,202 +120,114 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
         } else {
             downloadTextFile(secretContent, `secret-${id}.txt`);
         }
-    }
+    };
 
     return (
-        <main className="relative flex min-h-screen flex-col items-center justify-center p-6 overflow-hidden bg-black text-zinc-200">
+        <main className="relative flex min-h-[100svh] flex-col overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+            <PageBackdrop />
+            <SiteHeader subtle={status !== "idle"} />
 
-            <div className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000">
-                <Link
-                    href="/"
-                    className="fixed top-8 left-8 z-20 flex items-center gap-3 select-none animate-in fade-in slide-in-from-top-4 duration-1000 group cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
-                >
-                    <Image
-                        src="/icon.webp"
-                        draggable={false}
-                        alt="One-Look Logo"
-                        width={48}
-                        height={48}
-                        className="w-8 h-8 transition-transform"
-                    />
-                    <span className="font-bold text-xl tracking-tighter text-zinc-200">One-Look</span>
-                </Link>
-            </div>
+            <section className="safe-page-gutters safe-page-bottom relative z-10 mx-auto flex w-full max-w-xl flex-1 items-start justify-center pt-4 sm:pt-9 lg:items-center lg:py-12">
+                <div className="w-full">
+                    {(status === "idle" || status === "loading") && (
+                        <motion.section
+                            initial={{ y: shouldReduceMotion ? 0 : 8, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: "easeOut" }}
+                            className="app-surface rounded-2xl p-5 text-center sm:p-7"
+                            aria-busy={status === "loading"}
+                        >
+                            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-text-soft)]">
+                                <EyeOff className="h-5 w-5" />
+                            </span>
 
-            <div className="absolute inset-0 bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
+                            <h1 className="mt-5 text-2xl font-semibold tracking-[-0.035em] text-[var(--app-text)] sm:text-[28px]">
+                                Reveal one-time secret
+                            </h1>
+                            <p className="mx-auto mt-2 text-sm leading-6 text-[var(--app-muted)] sm:whitespace-nowrap">
+                                Opening it permanently deletes the encrypted data from the server.
+                            </p>
 
-            <div className="w-full max-w-lg z-10 flex flex-col gap-8">
+                            {!urlKey && isHashChecked && (
+                                <div className="mt-6 text-left">
+                                    <label htmlFor="decryption-key" className="mb-2 block text-xs font-medium text-[var(--app-text-soft)]">
+                                        Decryption key
+                                    </label>
+                                    <input
+                                        id="decryption-key"
+                                        value={inputKey}
+                                        onChange={(event) => setInputKey(event.target.value)}
+                                        placeholder="Enter decryption key"
+                                        autoComplete="off"
+                                        autoCapitalize="none"
+                                        spellCheck={false}
+                                        className="control-surface field-control h-12 w-full rounded-xl px-4 text-center font-mono text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted-dim)]"
+                                    />
+                                </div>
+                            )}
 
-                {(status === "idle" || status === 'loading') && (
-                    <div className="bg-black border border-zinc-800 p-6 md:p-8 rounded-3xl text-center space-y-6 shadow-2xl shadow-zinc-900/50 animate-in fade-in zoom-in-95 duration-500">
-                        {/* Horizontal Server -> Local Transfer Visualization */}
-                        <div className="relative flex items-center justify-center gap-4 py-4">
-                            {/* Server (Remote) */}
-                            <div className="flex flex-col items-center gap-2">
-                                <AnimatePresence mode="wait">
-                                    {!isBurning ? (
-                                        <motion.div 
-                                            key="server-normal"
-                                            className={cn(
-                                                "w-16 h-16 md:w-20 md:h-20 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-200 relative transition-all duration-300",
-                                                isTransferring && "ring-2 ring-green-500/50"
-                                            )}
-                                        >
-                                            <Server className={cn(
-                                                "w-8 h-8 md:w-10 md:h-10 relative z-10 transition-colors",
-                                                isTransferring && "text-green-400"
-                                            )} />
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div 
-                                            key="server-deleted"
-                                            className="w-16 h-16 md:w-20 md:h-20 bg-zinc-800/50 rounded-full flex items-center justify-center relative border border-zinc-700"
-                                            initial={{ scale: 0.8, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            transition={{ duration: 0.3, ease: "easeOut" }}
-                                        >
-                                            <Trash2 className="w-8 h-8 md:w-10 md:h-10 text-zinc-500" />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                                    Server
+                            <button
+                                type="button"
+                                onClick={handleBurn}
+                                className="primary-action mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={status === "loading" || (!urlKey && !inputKey.trim())}
+                            >
+                                {status === "loading" ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span>Decrypting…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <LockOpen className="h-4 w-4" />
+                                        <span>Reveal secret</span>
+                                    </>
+                                )}
+                            </button>
+                        </motion.section>
+                    )}
+
+                    {status === "success" && (
+                        <motion.section
+                            initial={{ y: shouldReduceMotion ? 0 : 8, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: "easeOut" }}
+                            className="app-surface overflow-hidden rounded-2xl"
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--app-border)] px-5 py-4 sm:px-6">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-text-soft)]">
+                                        <LockOpen className="h-4 w-4" />
+                                    </span>
+                                    <h1 className="text-sm font-medium text-[var(--app-text)]">Secret decrypted</h1>
+                                </div>
+                                <span className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-strong)] px-2 py-1 text-xs text-[var(--app-muted-dim)]">
+                                    Deleted from server
                                 </span>
                             </div>
-                            
-                            {/* Transfer Arrow/Particles */}
-                            <div className="relative w-16 md:w-24 h-8 flex items-center justify-center">
-                                <AnimatePresence>
-                                    {isTransferring && !isBurning && (
-                                        <>
-                                            {/* Animated particles flowing right */}
-                                            {[...Array(DATA_TRANSFER_PARTICLE_COUNT)].map((_, i) => (
-                                                <motion.div
-                                                    key={i}
-                                                    className="absolute w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.8)]"
-                                                    initial={{ x: -20, opacity: 0, scale: 0.5 }}
-                                                    animate={{ 
-                                                        x: [-20, 0, 20, 40], 
-                                                        opacity: [0, 1, 1, 0],
-                                                        scale: [0.5, 1, 1, 0.5]
-                                                    }}
-                                                    transition={{
-                                                        duration: 0.45,
-                                                        delay: i * 0.05,
-                                                        repeat: Infinity,
-                                                        ease: "easeInOut"
-                                                    }}
-                                                />
-                                            ))}
-                                        </>
-                                    )}
-                                </AnimatePresence>
-                                {!isTransferring && (
-                                    <ArrowRight className="w-6 h-6 text-zinc-600" />
-                                )}
-                            </div>
-                            
-                            {/* Local Device */}
-                            <div className="flex flex-col items-center gap-2">
-                                <div className={cn(
-                                    "w-16 h-16 md:w-20 md:h-20 border-2 border-dashed rounded-full flex items-center justify-center transition-all duration-300",
-                                    isTransferring ? "border-green-500/50 bg-green-500/5" : "border-zinc-700 bg-zinc-900/50"
-                                )}>
-                                    <Monitor className={cn(
-                                        "w-8 h-8 md:w-10 md:h-10 transition-colors",
-                                        isTransferring ? "text-green-400" : "text-zinc-500"
-                                    )} />
-                                </div>
-                                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Local</span>
-                            </div>
-                        </div>
-                        
-                        <div className="select-none">
-                            <h2 className="text-2xl md:text-3xl font-bold mb-3">
-                                Decrypt Secret
-                            </h2>
-                            <p className="text-zinc-500 text-sm leading-relaxed">
-                                You are about to view a secret.
-                                <br />
-                                <span className="text-zinc-400 font-medium">It vanishes completely once displayed.</span>
-                            </p>
-                        </div>
 
-                        {!urlKey && isHashChecked && (
-                            <div className="animate-in slide-in-from-top-2 fade-in duration-300">
-                                <input
-                                    value={inputKey}
-                                    onChange={(e) => setInputKey(e.target.value)}
-                                    placeholder="Decryption key"
-                                    aria-label="Decryption key"
-                                    autoComplete="off"
-                                    autoCapitalize="none"
-                                    spellCheck={false}
-                                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 text-center font-mono text-zinc-200 outline-none transition-all placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-4 focus:ring-zinc-500/10"
-                                />
-                            </div>
-                        )}
-
-                        <button
-                            onClick={() => handleBurn()}
-                            className="h-12 w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 disabled:opacity-50 disabled:cursor-not-allowed select-none hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                            disabled={status === 'loading' || (!urlKey && !inputKey.trim())}
-                        >
-                            {status === 'loading' ? (
-                                <>
-                                    <Loader2 className="animate-spin w-5 h-5" />
-                                    <span>{isBurning ? "Erasing server copy..." : "Transferring ciphertext..."}</span>
-                                </>
-                            ) : (
-                                "Reveal Secret"
-                            )}
-                        </button>
-                    </div>
-                )}
-
-                {status === "success" && (
-                    <div className="flex flex-col min-h-[60vh] justify-center">
-                        {/* Centered content */}
-                        <motion.div 
-                            className="bg-black border border-zinc-800 p-1 rounded-3xl shadow-xl"
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            transition={{ 
-                                type: "spring",
-                                stiffness: 420,
-                                damping: 32
-                            }}
-                        >
-                            <div className="p-6 md:p-8 space-y-6">
-                                <div className="flex items-center justify-between select-none">
-                                    <div className="flex items-center space-x-2 text-white">
-                                        <LockOpen className="w-6 h-6" />
-                                        <span className="font-bold text-lg">Decrypted</span>
-                                    </div>
-                                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold bg-zinc-900/50 border border-zinc-800 px-2 py-1 rounded">Vanished from server</span>
-                                </div>
-
+                            <div className="space-y-3 p-4 sm:p-5">
                                 {secretType === SecretTypes.TEXT && (
                                     <>
-                                        <div className="relative">
-                                            <pre className={`w-full h-64 p-4 bg-zinc-950 rounded-xl border border-zinc-900 text-white font-mono text-sm whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar`}>
-                                                {secretContent}
-                                            </pre>
-                                        </div>
-                                        <div className="flex gap-3 select-none">
+                                        <pre className="control-surface min-h-48 max-h-[48svh] w-full overflow-y-auto whitespace-pre-wrap break-words rounded-xl p-4 font-mono text-sm leading-6 text-[var(--app-text)] sm:p-5">
+                                            {secretContent}
+                                        </pre>
+                                        <div className="grid grid-cols-[1fr_3rem] gap-2">
                                             <button
+                                                type="button"
                                                 onClick={copyContent}
-                                                className="flex-1 py-3 bg-white text-black font-bold rounded-xl flex items-center justify-center space-x-2 hover:bg-zinc-200 transition-opacity cursor-pointer"
+                                                className="primary-action flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium"
                                             >
-                                                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                                <span>{isCopied ? "Copied" : "Copy"}</span>
+                                                {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                                <span>{isCopied ? "Copied" : "Copy secret"}</span>
                                             </button>
                                             <button
+                                                type="button"
                                                 onClick={downloadContent}
-                                                className="px-4 py-3 bg-zinc-900 text-zinc-400 font-medium rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer"
-                                                title="Save as file"
+                                                className="focus-ring control-surface flex h-12 w-12 items-center justify-center rounded-xl text-[var(--app-muted-dim)] transition-colors hover:text-[var(--app-text)]"
+                                                aria-label="Download secret as a text file"
                                             >
-                                                <Download className="w-5 h-5" />
+                                                <Download className="h-5 w-5" />
                                             </button>
                                         </div>
                                     </>
@@ -343,86 +235,64 @@ export default function ViewSecretPage({ params }: { params: Promise<{ id: strin
 
                                 {secretType === SecretTypes.FILE && secretFile && (
                                     <>
-                                        <div className="w-full h-64 bg-zinc-950 rounded-xl border border-zinc-900 flex flex-col items-center justify-center gap-4 text-center p-6 select-none">
-                                            <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center">
+                                        <div className="control-surface flex min-h-52 flex-col items-center justify-center gap-4 rounded-xl p-6 text-center">
+                                            <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-text-soft)]">
                                                 {(() => {
                                                     const Icon = getFileIcon(secretFile.fileType);
-                                                    return <Icon className="w-8 h-8 text-zinc-400" />;
+                                                    return <Icon className="h-6 w-6" />;
                                                 })()}
-                                            </div>
-                                            <div className="space-y-1 overflow-hidden w-full">
-                                                <p className="text-zinc-200 font-medium truncate px-4" title={secretFile.fileName}>
-                                                    {secretFile.fileName}
-                                                </p>
-                                                <p className="text-zinc-500 text-sm">
-                                                    {secretFile.fileType || "Unknown Type"}
-                                                </p>
+                                            </span>
+                                            <div className="w-full min-w-0">
+                                                <p className="truncate px-3 text-sm font-medium text-[var(--app-text)]" title={secretFile.fileName}>{secretFile.fileName}</p>
+                                                <p className="mt-1 text-xs text-[var(--app-muted-dim)]">{secretFile.fileType || "Unknown file type"}</p>
                                             </div>
                                         </div>
                                         <button
+                                            type="button"
                                             onClick={downloadContent}
-                                            className="w-full py-4 bg-white text-black font-bold text-lg rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center space-x-2 cursor-pointer select-none"
+                                            className="primary-action flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-medium"
                                         >
-                                            <Download className="w-5 h-5" />
-                                            <span>Download File</span>
+                                            <Download className="h-4 w-4" />
+                                            <span>Download file</span>
                                         </button>
                                     </>
                                 )}
                             </div>
-                        </motion.div>
+                        </motion.section>
+                    )}
 
-                        {/* Navigate to create another secret - positioned below content, not centered with it */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{
-                                delay: shouldReduceMotion ? 0 : 0.08,
-                                duration: shouldReduceMotion ? 0 : 0.2,
-                            }}
-                            className="mt-6"
+                    {status === "success" && (
+                        <Link
+                            href="/"
+                            className="focus-ring mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm text-[var(--app-muted-dim)] transition-colors hover:border-[var(--app-muted-dim)] hover:text-[var(--app-text)]"
                         >
+                            <ShieldPlus className="h-4 w-4" />
+                            <span>Secure another secret</span>
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    )}
+
+                    {status === "error" && (
+                        <motion.section
+                            initial={{ y: shouldReduceMotion ? 0 : 8, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            className="app-surface rounded-2xl p-5 text-center sm:p-7"
+                        >
+                            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-strong)] text-[var(--app-muted-dim)]">
+                                <EyeOff className="h-5 w-5" />
+                            </span>
+                            <h1 className="mt-5 text-xl font-semibold text-[var(--app-text)]">Secret unavailable</h1>
+                            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--app-muted)]">{errorMsg}</p>
                             <Link
                                 href="/"
-                                className="group block w-full rounded-xl border border-zinc-700/80 bg-zinc-900/60 px-4 py-3.5 text-center text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-800/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/50 active:scale-[0.99] cursor-pointer select-none"
+                                className="primary-action mt-6 flex min-h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-medium"
                             >
-                                <span className="flex items-center justify-center gap-2 text-sm font-medium">
-                                    <ShieldPlus className="w-4 h-4 text-zinc-400 transition-colors group-hover:text-zinc-200" />
-                                    <span>Secure another secret</span>
-                                    <ArrowRight className="w-4 h-4 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-                                </span>
+                                Create a new secret
                             </Link>
-                        </motion.div>
-                    </div>
-                )}
-
-                {status === "error" && (
-                    <div className="bg-black border border-zinc-800 p-8 rounded-3xl text-center space-y-6 shadow-xl animate-in fade-in zoom-in-95 duration-300">
-                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-500">
-                            <EyeOff className="w-10 h-10" />
-                        </div>
-                        <div className="select-none">
-                            <h2 className="text-2xl font-bold text-white mb-2">Content Unavailable</h2>
-                            <p className="text-zinc-500 font-medium px-4">
-                                {errorMsg}
-                            </p>
-                        </div>
-
-                        <div className="pt-4 flex flex-col gap-3 select-none">
-                            <Link
-                                href="/"
-                                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-colors block"
-                            >
-                                Create New Secret
-                            </Link>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Footer */}
-            <div className="absolute bottom-6 left-0 right-0 text-center select-none pointer-events-none">
-                <p className="text-[10px] text-zinc-600 font-mono tracking-widest uppercase">Powered by One Look</p>
-            </div>
-        </main >
+                        </motion.section>
+                    )}
+                </div>
+            </section>
+        </main>
     );
 }

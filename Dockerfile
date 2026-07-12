@@ -1,12 +1,10 @@
-FROM node:22-alpine AS base
-# Pin pnpm to match the version that generated pnpm-lock.yaml / pnpm-workspace.yaml
-RUN npm install -g pnpm@11.5.1
+FROM oven/bun:1.3.8-alpine AS base
 
 # ---- Install dependencies ----
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 # ---- Build ----
 FROM base AS builder
@@ -23,10 +21,10 @@ ENV NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB=${NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB}
 # No connection is made (lazyConnect); the real URL is injected at runtime.
 ENV REDIS_URL="redis://build-placeholder:6379"
 
-RUN pnpm build
+RUN bun run build
 
 # ---- Runtime ----
-FROM base AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

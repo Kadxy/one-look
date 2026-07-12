@@ -91,7 +91,7 @@ You can deploy your own instance of One-Look in seconds. You only need a Redis i
 2.  **Install dependencies**
 
     ```bash
-    pnpm install
+    bun install
     ```
 
 3.  **Set up environment**
@@ -103,7 +103,7 @@ You can deploy your own instance of One-Look in seconds. You only need a Redis i
 4.  **Run development server**
 
     ```bash
-    pnpm dev
+    bun dev
     ```
 
 ## Security Architecture

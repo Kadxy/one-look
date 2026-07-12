@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { generateKey, encryptData } from "@/lib/crypto";
 import {
-    Copy, Check, Link2, Clock, ChevronDown, Upload,
+    Copy, Check, Link2, Clock, Minus, Plus, Paperclip,
     Lock, CloudUpload, Key, ShieldCheck,
     FileText, X, Image as ImageIcon, Video, Music, ArrowRight
 } from "lucide-react";
@@ -24,7 +24,14 @@ const LOADING_STEPS = [
 
 const CIPHER_PHASES = ["KEY MATERIAL", "LOCAL CIPHER", "UPLOAD BUFFER", "SEALED"];
 const CIPHER_ROW_COUNT = 3;
-const CIPHER_BYTES_PER_ROW = 12;
+const CIPHER_BYTES_PER_ROW = 10;
+const TTL_SHORT_LABELS: Record<number, string> = {
+    [10 * 60]: "10m",
+    [30 * 60]: "30m",
+    [60 * 60]: "1h",
+    [12 * 60 * 60]: "12h",
+    [24 * 60 * 60]: "24h",
+};
 
 interface SelectedFile {
     name: string;
@@ -54,10 +61,10 @@ function CipherStream({ phase }: { phase: number }) {
 
     return (
         <div
-            className="relative w-full h-40 overflow-hidden rounded-2xl border border-zinc-800 bg-black shadow-sm select-none"
+            className="control-surface relative h-full w-full overflow-hidden rounded-xl select-none"
             aria-hidden="true"
         >
-            <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between font-mono text-[9px] tracking-[0.2em] text-zinc-600">
+            <div className="absolute inset-x-4 top-3 z-10 flex items-center justify-between font-mono text-[9px] tracking-[0.2em] text-[var(--app-muted-dim)]">
                 <span>{CIPHER_PHASES[phase]}</span>
                 <span>AES-256-GCM</span>
             </div>
@@ -79,7 +86,7 @@ function CipherStream({ phase }: { phase: number }) {
                             {row.map((byte, byteIndex) => (
                                 <span
                                     key={`${rowIndex}-${byteIndex}`}
-                                    className="flex h-5 w-6 sm:w-7 items-center justify-center rounded border border-green-500/[0.08] bg-green-500/[0.025] text-green-300/55"
+                                    className="flex h-5 w-6 items-center justify-center rounded border border-[var(--app-border)] bg-[var(--app-hover)] text-[var(--app-muted)] sm:w-7"
                                 >
                                     {byte}
                                 </span>
@@ -90,7 +97,7 @@ function CipherStream({ phase }: { phase: number }) {
             </div>
 
             <motion.div
-                className="absolute inset-x-4 top-9 h-px bg-gradient-to-r from-transparent via-green-400/50 to-transparent shadow-[0_0_8px_rgba(74,222,128,0.22)]"
+                className="cipher-scan-line absolute inset-x-4 top-9 h-px"
                 animate={{ y: [0, 88, 0], opacity: [0, 0.65, 0] }}
                 transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
             />
@@ -106,7 +113,6 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [isTtlOpen, setIsTtlOpen] = useState(false);
     const [ttl, setTtl] = useState(TTL_OPTIONS.at(-1)?.value || 24 * 60 * 60);
     const [linkNum, setLinkNum] = useState(1);
 
@@ -298,7 +304,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
     };
 
     return (
-        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-3">
+        <div className="w-full max-w-xl space-y-3">
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
 
             {resultLinks.length > 0 ? (
@@ -311,14 +317,14 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                             stiffness: 420,
                             damping: 32
                         }}
-                        className="bg-black border border-zinc-800 rounded-2xl shadow-xl overflow-hidden"
+                        className="app-surface overflow-hidden rounded-2xl"
                     >
-                        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between select-none">
-                            <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium tracking-wide">
+                        <div className="flex items-center justify-between gap-3 border-b border-[var(--app-border)] px-4 py-4 select-none sm:px-6">
+                            <div className="flex items-center gap-2 text-xs font-medium tracking-wide text-[var(--app-text-soft)]">
                                 <ShieldCheck className="w-3.5 h-3.5" />
                                 <span>Secured</span>
                             </div>
-                            <div className="text-xs text-zinc-500 font-mono">
+                            <div className="text-right font-mono text-xs text-[var(--app-muted)]">
                                 Auto-burns in {TTL_OPTIONS.find(t => t.value === ttl)?.label}
                             </div>
                         </div>
@@ -326,22 +332,24 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                         <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
                             {resultLinks.map((link, idx) => (
                                 <div key={idx} className="relative group">
-                                    <div className="flex items-center gap-3 px-3 py-2 bg-zinc-900/40 hover:bg-zinc-900/60 rounded-lg transition-all border border-zinc-800/50">
+                                    <div className="control-surface flex min-h-14 items-center gap-2 rounded-xl px-2.5 py-1.5 transition-colors sm:gap-3 sm:px-3">
                                         <div className="flex-1 min-w-0">
                                             <input
                                                 readOnly
                                                 value={link}
                                                 onClick={(e) => e.currentTarget.select()}
-                                                className="w-full bg-transparent text-xs font-mono text-zinc-400 focus:text-zinc-200 focus:outline-none cursor-pointer no-scrollbar"
+                                                aria-label={`Secured link ${idx + 1}`}
+                                                className="h-11 w-full cursor-pointer bg-transparent font-mono text-xs text-[var(--app-text-soft)] outline-none no-scrollbar focus:text-[var(--app-text)]"
                                             />
                                         </div>
                                         <button
                                             onClick={() => copyToClipboard(link, idx)}
+                                            aria-label={copiedIndex === idx ? `Link ${idx + 1} copied` : `Copy link ${idx + 1}`}
                                             className={cn(
-                                                "flex-shrink-0 p-2 rounded-md transition-all cursor-pointer",
+                                                "focus-ring flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg transition-all cursor-pointer",
                                                 copiedIndex === idx
-                                                    ? "bg-zinc-800 text-white"
-                                                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+                                                    ? "bg-[var(--app-hover-strong)] text-[var(--app-text)]"
+                                                    : "text-[var(--app-muted)] hover:bg-[var(--app-hover)] hover:text-[var(--app-text)]"
                                             )}
                                         >
                                             {copiedIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -356,10 +364,10 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                 <button
                                     onClick={copyAll}
                                     className={cn(
-                                        "w-full py-2.5 px-4 rounded-lg font-medium text-sm flex items-center justify-center transition-colors cursor-pointer select-none",
+                                        "control-surface focus-ring flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-medium transition-colors cursor-pointer select-none",
                                         copiedIndex === 999
-                                            ? "bg-zinc-800 text-white border border-zinc-700"
-                                            : "bg-zinc-900 text-zinc-300 hover:bg-zinc-800 border border-zinc-800"
+                                            ? "text-[var(--app-text)]"
+                                            : "text-[var(--app-text-soft)] hover:text-[var(--app-text)]"
                                     )}
                                 >
                                     <span className="inline-flex items-center gap-2 w-[5.5rem] justify-center">
@@ -376,44 +384,39 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
 
                     <button
                         onClick={resetToCreateNew}
-                        className="w-full text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer underline underline-offset-4 decoration-zinc-700 hover:decoration-zinc-500 select-none"
+                        className="focus-ring flex min-h-11 w-full items-center justify-center rounded-lg text-center text-sm text-[var(--app-muted)] transition-colors cursor-pointer underline underline-offset-4 decoration-[var(--app-border-strong)] hover:text-[var(--app-text-soft)] hover:decoration-[var(--app-muted)] select-none"
                     >
                         Create another
                     </button>
                 </>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-5 sm:space-y-6">
                     <div
-                        className="relative group origin-center"
+                        className="relative origin-center"
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                     >
-                        <div className={cn(
-                            "absolute -inset-0.5 bg-gradient-to-br from-zinc-800/30 to-zinc-900/30 rounded-2xl blur opacity-20 transition duration-500",
-                            isDragging ? "opacity-60 bg-zinc-700" : "group-hover:opacity-40"
-                        )}></div>
-
-                        <div className="relative h-40">
+                        <div className="relative h-40 sm:h-48">
                             {secretType === SecretTypes.FILE && selectedFile ? (
-                                <div className="relative w-full h-40 bg-black text-zinc-300 p-5 rounded-2xl border border-zinc-800 flex items-center transition-all select-none">
+                                <div className="control-surface relative flex h-full w-full items-center rounded-xl p-5 text-[var(--app-text-soft)] transition-all select-none">
                                     <div className="flex w-full items-center gap-3 px-2">
-                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/70">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--app-border)] bg-[var(--app-hover)]">
                                             {isFileEncrypting ? (
-                                                <Lock className="w-5 h-5 text-zinc-400 animate-pulse" />
+                                                <Lock className="h-5 w-5 animate-pulse text-[var(--app-muted)]" />
                                             ) : (
                                                 (() => {
                                                     const Icon = getFileIcon(selectedFile.type);
-                                                    return <Icon className="w-5 h-5 text-zinc-400" />;
+                                                    return <Icon className="h-5 w-5 text-[var(--app-muted)]" />;
                                                 })()
                                             )}
                                         </div>
 
                                         <div className="min-w-0 flex-1 text-left">
-                                            <p className="truncate text-sm font-medium text-zinc-200">
+                                            <p className="truncate text-sm font-medium text-[var(--app-text-soft)]">
                                                 {isFileEncrypting ? "Encrypting file..." : selectedFile.name}
                                             </p>
-                                            <p className="mt-0.5 truncate text-xs text-zinc-500">
+                                            <p className="mt-0.5 truncate text-xs text-[var(--app-muted)]">
                                                 {isFileEncrypting ? selectedFile.name : formatFileSize(selectedFile.size)}
                                             </p>
                                         </div>
@@ -421,7 +424,7 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                         {!isFileEncrypting && (
                                             <button
                                                 onClick={clearFile}
-                                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-900 hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600/50 cursor-pointer"
+                                                className="focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-hover)] hover:text-[var(--app-text)] cursor-pointer"
                                                 aria-label="Remove selected file"
                                                 title="Remove file"
                                             >
@@ -441,26 +444,27 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                                             onChange={(e) => setContent(e.target.value)}
                                             placeholder={customPlaceholder}
                                             className={cn(
-                                                "relative block w-full h-40 bg-black text-zinc-300 p-5 pr-14 rounded-2xl border focus:outline-none focus:ring-4 resize-none placeholder:text-zinc-600 text-base font-mono leading-relaxed shadow-sm transition-all no-scrollbar",
-                                                isDragging ? "border-dashed border-zinc-500 bg-zinc-900/20" : "border-zinc-800 focus:border-zinc-500/50 focus:ring-zinc-500/10",
-                                                isShaking && "animate-shake border-zinc-600 placeholder:text-zinc-500"
+                                                "control-surface field-control relative block h-full w-full resize-none rounded-xl px-4 pt-4 pb-11 font-mono text-[15px] leading-7 text-[var(--app-text)] outline-none placeholder:text-[var(--app-muted-dim)] no-scrollbar sm:px-5 sm:pt-5",
+                                                isDragging && "border-dashed border-[var(--app-border-strong)] bg-[var(--app-hover)]",
+                                                isShaking && "animate-shake border-[var(--app-border-strong)] placeholder:text-[var(--app-muted)]"
                                             )}
                                             spellCheck={false}
                                         />
                                     )}
                                     {isDragging && (
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <p className="text-zinc-400 font-medium">Drop to upload</p>
+                                            <p className="font-medium text-[var(--app-text-soft)]">Drop to upload</p>
                                         </div>
                                     )}
                                     {!content && !isDragging && !isTextEncrypting && (
                                         <button
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="absolute bottom-3 right-3 p-2.5 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-900/50 rounded-lg transition-all cursor-pointer group/upload"
+                                            className="focus-ring absolute right-3 bottom-3 flex h-8 w-8 items-center justify-center rounded-md text-[var(--app-muted-dim)] transition-colors hover:bg-[var(--app-surface-strong)] hover:text-[var(--app-text)] cursor-pointer"
                                             title={`Attach File (Max ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB)`}
+                                            aria-label={`Attach file, maximum ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB`}
                                         >
-                                            <Upload className="w-4.5 h-4.5" />
+                                            <Paperclip className="h-4 w-4" />
                                         </button>
                                     )}
                                 </>
@@ -469,67 +473,72 @@ export default function CreateForm({ setInresult }: { setInresult: (inResult: bo
                     </div>
 
                     {/* Controls */}
-                    <div className="flex gap-4 select-none">
-                        <div className="space-y-2 w-24">
-                            <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-1">
-                                <Clock className="w-3 h-3" />
-                                <span>TTL</span>
+                    <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] items-start gap-2 select-none sm:grid-cols-[minmax(0,1fr)_8rem] sm:gap-3">
+                        <fieldset className="min-w-0 space-y-2">
+                            <legend className="sr-only">Expiration time</legend>
+                            <div className="flex h-4 items-center gap-1.5 text-[11px] font-medium whitespace-nowrap sm:text-xs">
+                                <Clock className="h-3.5 w-3.5 shrink-0 text-[var(--app-muted-dim)]" />
+                                <span className="text-[var(--app-muted)]">Expires after</span>
                             </div>
-                            <div className="relative">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsTtlOpen(!isTtlOpen)}
-                                    className={cn("w-full h-8.5 flex items-center justify-between px-3 bg-black border border-zinc-800 rounded-lg text-xs text-zinc-300 hover:border-zinc-600 transition-colors cursor-pointer", isLoading && "opacity-50 cursor-not-allowed")}
-                                    disabled={isLoading}
-                                >
-                                    <span>{TTL_OPTIONS.find((t) => t.value === ttl)?.label}</span>
-                                    <ChevronDown className={cn("w-3 h-3 transition-transform", isTtlOpen && "rotate-180")} />
-                                </button>
-                                {isTtlOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-100">
-                                        {TTL_OPTIONS.map((opt) => (
-                                            <button
-                                                key={opt.value}
-                                                onClick={() => { setTtl(opt.value); setIsTtlOpen(false); }}
-                                                className={cn("w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer hover:bg-zinc-800", ttl === opt.value ? "text-white bg-zinc-800/50 font-medium" : "text-zinc-400")}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider pl-1">
-                                <Link2 className="w-3 h-3" />
-                                <span>Copies</span>
-                            </div>
-                            <div className="flex bg-black p-1 rounded-lg border border-zinc-800 w-fit h-8.5">
-                                {[1, 2, 3, 4, 5].map((num) => (
+                            <div className="control-surface grid h-10 min-w-0 grid-cols-5 rounded-lg p-0.5" role="group" aria-label="Secret expiration time">
+                                {TTL_OPTIONS.map((option) => (
                                     <button
-                                        key={num}
-                                        onClick={() => setLinkNum(num)}
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => setTtl(option.value)}
+                                        aria-pressed={ttl === option.value}
+                                        aria-label={`Expire after ${option.label}`}
                                         className={cn(
-                                            "w-8 h-full flex items-center justify-center rounded-md text-xs font-medium transition-all cursor-pointer",
-                                            linkNum === num ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-600 hover:text-zinc-400",
-                                            isLoading && "opacity-50 cursor-not-allowed"
+                                            "focus-ring flex h-full min-w-0 items-center justify-center rounded-md text-[10px] font-medium transition-colors sm:text-xs",
+                                            ttl === option.value
+                                                ? "bg-[var(--app-surface-strong)] text-[var(--app-text)]"
+                                                : "text-[var(--app-muted-dim)] hover:bg-[var(--app-surface-strong)] hover:text-[var(--app-text)]",
+                                            isLoading && "cursor-not-allowed opacity-50"
                                         )}
                                         disabled={isLoading}
                                     >
-                                        {num}
+                                        {TTL_SHORT_LABELS[option.value]}
                                     </button>
                                 ))}
                             </div>
-                        </div>
+                        </fieldset>
+
+                        <fieldset className="min-w-0 space-y-2">
+                            <legend className="sr-only">Number of one-time links</legend>
+                            <div className="flex h-4 items-center gap-1.5 text-[11px] font-medium whitespace-nowrap sm:text-xs">
+                                <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--app-muted-dim)]" />
+                                <span className="text-[var(--app-muted)]">Copies</span>
+                            </div>
+
+                            <div className="control-surface grid h-10 w-full grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] overflow-hidden rounded-lg" role="group" aria-label="Number of one-time links">
+                                <button
+                                    type="button"
+                                    onClick={() => setLinkNum((current) => Math.max(1, current - 1))}
+                                    disabled={isLoading || linkNum === 1}
+                                    className="focus-ring flex h-full w-full items-center justify-center rounded-md text-[var(--app-muted-dim)] transition-colors hover:bg-[var(--app-surface-strong)] hover:text-[var(--app-text)] disabled:opacity-30"
+                                    aria-label="Create fewer links"
+                                >
+                                    <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="flex min-w-0 items-center justify-center text-center text-sm font-medium text-[var(--app-text)]" aria-live="polite">{linkNum}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setLinkNum((current) => Math.min(5, current + 1))}
+                                    disabled={isLoading || linkNum === 5}
+                                    className="focus-ring flex h-full w-full items-center justify-center rounded-md text-[var(--app-muted-dim)] transition-colors hover:bg-[var(--app-surface-strong)] hover:text-[var(--app-text)] disabled:opacity-30"
+                                    aria-label="Create more links"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </fieldset>
                     </div>
 
                     {/* Main Action Button */}
                     <button
                         onClick={handleCreate}
-                        className={cn("h-12 group w-full bg-gradient-to-t from-zinc-100 to-white text-black font-bold rounded-xl transition-all flex items-center justify-center space-x-2 shadow-[0px_0px_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-white/50 active:scale-[0.99] cursor-pointer select-none",
-                            isLoading && "opacity-80 shadow-none scale-[1.01]"
+                        className={cn("primary-action group flex min-h-11 w-full items-center justify-center space-x-2 rounded-lg px-5 text-sm font-medium transition-colors cursor-pointer select-none sm:ml-auto sm:w-auto sm:min-w-[168px]",
+                            isLoading && "opacity-80"
                         )}
                         disabled={isLoading}
                     >

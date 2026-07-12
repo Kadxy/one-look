@@ -1,17 +1,251 @@
 @import "tailwindcss";
 
 @layer base {
+    :root {
+        color-scheme: light dark;
+        --app-bg: #050505;
+        --app-surface: rgba(10, 10, 10, 0.88);
+        --app-control: rgba(5, 5, 5, 0.8);
+        --app-surface-strong: #171717;
+        --app-border: rgba(255, 255, 255, 0.1);
+        --app-border-strong: rgba(255, 255, 255, 0.2);
+        --app-text: #e7e7e7;
+        --app-text-soft: #b8b8b8;
+        --app-muted: #8a8a8a;
+        --app-muted-dim: #5f5f5f;
+        --app-accent: #d4d4d4;
+        --app-accent-strong: #f5f5f5;
+        --app-hover: rgba(255, 255, 255, 0.05);
+        --app-hover-strong: rgba(255, 255, 255, 0.1);
+        --app-scrim: rgba(0, 0, 0, 0.8);
+        --app-shadow: rgba(0, 0, 0, 0.32);
+        --app-button-bg: #ededed;
+        --app-button-text: #090909;
+        --app-button-hover: #ffffff;
+        --app-grid-line: rgba(255, 255, 255, 0.035);
+        --app-grid-line-faint: rgba(255, 255, 255, 0.012);
+        --app-glow-strong: rgba(255, 255, 255, 0.1);
+        --app-glow-soft: rgba(255, 255, 255, 0.035);
+        --app-vignette: rgba(0, 0, 0, 0.58);
+        --app-selection-bg: #e7e7e7;
+        --app-selection-text: #050505;
+    }
 
-    html,
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        min-width: 320px;
+        background: var(--app-bg);
+        scroll-behavior: smooth;
+    }
+
     body {
-        background-color: #050505;
-        color: #e4e4e7;
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
+        background: var(--app-bg);
+        color: var(--app-text);
+        font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
     }
 
     ::selection {
-        background-color: #ffffff;
-        color: #000000;
+        background-color: var(--app-selection-bg);
+        color: var(--app-selection-text);
     }
+
+    button,
+    input,
+    textarea,
+    select {
+        font: inherit;
+    }
+
+    button,
+    a,
+    select {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+.site-header {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    animation: header-enter 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.safe-page-gutters {
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+.safe-page-bottom {
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+}
+
+.app-grid {
+    background-image:
+        linear-gradient(var(--app-grid-line-faint) 1px, transparent 1px),
+        linear-gradient(90deg, var(--app-grid-line-faint) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.signal-glow {
+    background:
+        radial-gradient(ellipse 46% 58% at 50% -12%, var(--app-glow-strong), transparent 72%),
+        radial-gradient(ellipse 30% 42% at 50% 2%, var(--app-glow-soft), transparent 78%);
+    animation: signal-enter 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.signal-beam {
+    background: conic-gradient(
+        from 180deg at 50% 0%,
+        transparent 0deg,
+        var(--app-glow-soft) 9deg,
+        var(--app-grid-line) 16deg,
+        transparent 27deg,
+        transparent 333deg,
+        var(--app-grid-line) 344deg,
+        var(--app-glow-soft) 351deg,
+        transparent 360deg
+    );
+    filter: blur(18px);
+    opacity: 0.8;
+    animation: beam-enter 1500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.precision-grid {
+    background-image:
+        linear-gradient(var(--app-grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--app-grid-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 54% 58% at 50% 34%, black 0%, rgba(0, 0, 0, 0.72) 48%, transparent 84%);
+    animation: grid-enter 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.axis-line {
+    background: linear-gradient(to bottom, var(--app-border-strong), var(--app-glow-soft) 36%, transparent 74%);
+    opacity: 0.55;
+    transform-origin: top;
+    animation: axis-enter 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.intro-light-sweep {
+    background: radial-gradient(ellipse at center, var(--app-glow-strong), var(--app-glow-soft) 34%, transparent 72%);
+    filter: blur(18px);
+    opacity: 0;
+    animation: intro-light-sweep 1250ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both;
+}
+
+.page-vignette {
+    background: radial-gradient(ellipse at center, transparent 38%, var(--app-vignette) 112%);
+}
+
+.app-surface {
+    border: 1px solid var(--app-border);
+    background:
+        linear-gradient(180deg, var(--app-hover) 0%, transparent 28%),
+        var(--app-surface);
+    box-shadow:
+        0 0 0 1px var(--app-grid-line-faint),
+        0 12px 36px var(--app-shadow);
+    backdrop-filter: blur(12px);
+}
+
+.control-surface {
+    border: 1px solid var(--app-border);
+    background: var(--app-control);
+}
+
+.cipher-scan-line {
+    background: linear-gradient(90deg, transparent, var(--app-accent), transparent);
+}
+
+.primary-action {
+    color: var(--app-button-text);
+    background: var(--app-button-bg);
+    border: 1px solid var(--app-button-hover);
+    box-shadow: none;
+}
+
+.primary-action:hover:not(:disabled) {
+    background: var(--app-button-hover);
+    border-color: var(--app-button-hover);
+}
+
+.primary-action:focus-visible,
+.focus-ring:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.field-control {
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.field-control:focus {
+    border-color: var(--app-border-strong);
+    box-shadow: 0 0 0 1px var(--app-border);
+    outline: none;
+}
+
+.brand-icon {
+    border: 1px solid var(--app-border);
+    background: var(--app-control);
+    box-shadow: inset 0 1px 0 var(--app-hover);
+}
+
+.github-link,
+.security-link {
+    color: var(--app-muted-dim);
+}
+
+.github-link:hover,
+.security-link:hover {
+    color: var(--app-text);
+}
+
+@keyframes header-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes signal-enter {
+    from { opacity: 0; transform: translateY(-32px) scale(0.92); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes beam-enter {
+    from { opacity: 0; transform: translateX(-50%) scaleX(0.72); }
+    to { opacity: 0.8; transform: translateX(-50%) scaleX(1); }
+}
+
+@keyframes grid-enter {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes axis-enter {
+    from { opacity: 0; transform: translateX(-50%) scaleY(0); }
+    to { opacity: 0.55; transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes intro-light-sweep {
+    0% { opacity: 0; transform: translate(-50%, -18px) scaleX(0.62); }
+    32% { opacity: 0.32; }
+    100% { opacity: 0; transform: translate(-50%, 150px) scaleX(1.08); }
 }
 
 /* Custom Scrollbar */
@@ -25,12 +259,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #27272a;
+    background: var(--app-muted-dim);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #3f3f46;
+    background: var(--app-muted);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -90,11 +324,79 @@
 }
 
 .text-gradient {
-    background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
+    background: linear-gradient(180deg, var(--app-accent-strong) 8%, var(--app-muted) 112%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     display: inline-block;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color-scheme: light;
+        --app-bg: #ffffff;
+        --app-surface: rgba(255, 255, 255, 0.94);
+        --app-control: rgba(255, 255, 255, 0.9);
+        --app-surface-strong: #f2f2f2;
+        --app-border: rgba(0, 0, 0, 0.11);
+        --app-border-strong: rgba(0, 0, 0, 0.22);
+        --app-text: #171717;
+        --app-text-soft: #404040;
+        --app-muted: #666666;
+        --app-muted-dim: #8a8a8a;
+        --app-accent: #171717;
+        --app-accent-strong: #000000;
+        --app-hover: rgba(0, 0, 0, 0.045);
+        --app-hover-strong: rgba(0, 0, 0, 0.08);
+        --app-scrim: rgba(255, 255, 255, 0.82);
+        --app-shadow: rgba(0, 0, 0, 0.1);
+        --app-button-bg: #171717;
+        --app-button-text: #ffffff;
+        --app-button-hover: #000000;
+        --app-grid-line: rgba(0, 0, 0, 0.04);
+        --app-grid-line-faint: rgba(0, 0, 0, 0.015);
+        --app-glow-strong: rgba(0, 0, 0, 0.045);
+        --app-glow-soft: rgba(0, 0, 0, 0.018);
+        --app-vignette: rgba(255, 255, 255, 0.72);
+        --app-selection-bg: #171717;
+        --app-selection-text: #ffffff;
+    }
+}
+
+@media (min-width: 640px) {
+    .site-header {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-right: max(2rem, env(safe-area-inset-right));
+        padding-left: max(2rem, env(safe-area-inset-left));
+    }
+
+    .safe-page-gutters {
+        padding-right: max(2rem, env(safe-area-inset-right));
+        padding-left: max(2rem, env(safe-area-inset-left));
+    }
+}
+
+@media (min-width: 1024px) {
+    .site-header,
+    .safe-page-gutters {
+        padding-right: max(2.5rem, env(safe-area-inset-right));
+        padding-left: max(2.5rem, env(safe-area-inset-left));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* Burn/Vanish Animation for vault destruction */
@@ -105,12 +407,12 @@
         transform: scale(1);
     }
     50% {
-        filter: brightness(3) blur(2px) hue-rotate(-45deg);
+        filter: brightness(1.65) blur(1px) hue-rotate(-28deg);
     }
     100% {
         opacity: 0;
-        filter: brightness(0) blur(20px);
-        transform: scale(0.1);
+        filter: brightness(0.25) blur(14px);
+        transform: scale(0.18);
     }
 }
 
