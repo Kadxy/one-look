@@ -12,7 +12,13 @@ export default function proxy(request: NextRequest) {
     // Rewrite to the internal /wechat page (keeps URL the same)
     const url = request.nextUrl.clone();
     url.pathname = '/wechat';
-    return NextResponse.rewrite(url);
+    const response = NextResponse.rewrite(url);
+
+    // Never let a shared cache reuse the WeChat intercept page for the same
+    // secret URL in another browser.
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+
+    return response;
   }
 
   return NextResponse.next();

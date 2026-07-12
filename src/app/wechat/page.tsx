@@ -1,6 +1,11 @@
 import { ExternalLink, ShieldAlert } from "lucide-react";
 import { BrandLink, PageBackdrop } from "@/components/SiteChrome";
 
+// This page is reached through a User-Agent-dependent rewrite. Keeping it
+// dynamic prevents Next.js from assigning a long shared-cache lifetime to the
+// rewritten response.
+export const dynamic = "force-dynamic";
+
 export default function WeChatIntercept() {
     return (
         <main className="relative min-h-[100svh] overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
